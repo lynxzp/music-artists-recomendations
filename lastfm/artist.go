@@ -1,0 +1,89 @@
+package lastfm
+
+import (
+	"encoding/json"
+	"fmt"
+	"io"
+	"net/http"
+	"net/url"
+)
+
+const baseURL = "https://ws.audioscrobbler.com/2.0/"
+
+type SimilarArtist struct {
+	Name  string  `json:"name"`
+	MBID  string  `json:"mbid"`
+	Match float64 `json:"match,string"`
+	URL   string  `json:"url"`
+}
+
+type similarArtistsResponse struct {
+	SimilarArtists struct {
+		Artist []SimilarArtist `json:"artist"`
+	} `json:"similarartists"`
+}
+
+func (c *Client) ArtistGetSimilar(artist, mbid string, limit int, autocorrect bool) ([]SimilarArtist, error) {
+	if artist == "" && mbid == "" {
+		return nil, fmt.Errorf("either Artist or MBID must be provided")
+	}
+
+	q := url.Values{}
+	q.Set("method", "artist.getsimilar")
+	q.Set("api_key", c.apiKey)
+	q.Set("format", "json")
+
+	if artist != "" {
+		q.Set("artist", artist)
+	}
+	if mbid != "" {
+		q.Set("mbid", mbid)
+	}
+	if limit > 0 {
+		q.Set("limit", fmt.Sprintf("%d", limit))
+	}
+	if autocorrect {
+		q.Set("autocorrect", "1")
+	}
+
+	requestURL := baseURL + "?" + q.Encode()
+
+	var body []byte
+
+	if c.cache != nil {
+		if cached, ok := c.cache.Get(requestURL); ok {
+			body = []byte(cached)
+		}
+	}
+
+	if body == nil {
+		if c.limiter != nil {
+			c.limiter.Wait()
+		}
+		resp, err := http.Get(requestURL)
+		if err != nil {
+			return nil, fmt.Errorf("request failed: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
+		}
+
+		body, err = io.ReadAll(resp.Body)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read response: %w", err)
+		}
+
+		if c.cache != nil {
+			c.cache.Set(requestURL, string(body))
+		}
+	}
+
+	var result similarArtistsResponse
+	if err := json.Unmarshal(body, &result); err != nil {
+		return nil, fmt.Errorf("failed to decode response: %w", err)
+	}
+
+	return result.SimilarArtists.Artist, nil
+}
