@@ -12,67 +12,149 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 24px;
             display: flex;
-            gap: 20px;
+            gap: 24px;
             height: 100vh;
+            background: #f8f9fa;
+            color: #2d3748;
+            line-height: 1.5;
         }
         .left-panel {
-            width: 300px;
+            width: 320px;
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 14px;
+            background: #fff;
+            padding: 24px;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
+        }
+        .left-panel h3 {
+            margin: 0 0 4px 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a202c;
         }
         .right-panel {
             flex: 1;
             overflow: auto;
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
+            padding: 20px;
         }
         .artist-entry {
             display: flex;
-            gap: 5px;
+            gap: 8px;
             align-items: center;
         }
         .artist-entry input[type="text"] { flex: 1; }
-        .artist-entry input[type="number"] { width: 70px; }
-        .artist-entry button { width: 30px; }
-        input, button {
-            padding: 8px;
-            font-size: 14px;
+        .artist-entry input[type="number"] { width: 75px; }
+        .artist-entry button {
+            width: 32px;
+            height: 38px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            font-size: 16px;
+            border-radius: 6px;
         }
-        button { cursor: pointer; }
+        .artist-entry button:hover {
+            background: #fee2e2;
+            border-color: #fca5a5;
+            color: #dc2626;
+        }
+        input, button {
+            padding: 10px 12px;
+            font-size: 14px;
+            border-radius: 8px;
+            border: 1px solid #e2e8f0;
+            transition: border-color 0.15s, box-shadow 0.15s, background 0.15s;
+        }
+        input:focus {
+            outline: none;
+            border-color: #6366f1;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+        }
+        button {
+            cursor: pointer;
+            background: #f8fafc;
+            font-weight: 500;
+        }
+        button:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
+        }
         #goBtn {
-            background: #007bff;
+            background: linear-gradient(135deg, #6366f1 0%%, #4f46e5 100%%);
             color: white;
             border: none;
-            padding: 12px;
-            font-size: 16px;
+            padding: 14px 16px;
+            font-size: 15px;
+            font-weight: 600;
+            margin-top: 8px;
+            box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
         }
-        #goBtn:hover { background: #0056b3; }
-        #goBtn:disabled { background: #ccc; }
+        #goBtn:hover {
+            background: linear-gradient(135deg, #4f46e5 0%%, #4338ca 100%%);
+            box-shadow: 0 4px 8px rgba(99, 102, 241, 0.4);
+        }
+        #goBtn:disabled {
+            background: #cbd5e1;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
         table {
             border-collapse: collapse;
             width: 100%%;
             font-size: 13px;
         }
         th, td {
-            border: 1px solid #ddd;
-            padding: 6px 10px;
+            border: 1px solid #e5e7eb;
+            padding: 10px 14px;
             text-align: left;
         }
         th {
-            background: #f5f5f5;
+            background: #f8fafc;
             position: sticky;
             top: 0;
+            font-weight: 600;
+            color: #475569;
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
-        td.match { text-align: right; }
-        .total { font-weight: bold; background: #f0f8ff; }
-        #status { color: #666; font-size: 14px; }
+        tbody tr:hover {
+            background: #f8fafc;
+        }
+        td.match {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            color: #64748b;
+        }
+        .total {
+            font-weight: 600;
+            background: #f0f9ff;
+            color: #0369a1;
+        }
+        tbody tr:hover .total {
+            background: #e0f2fe;
+        }
+        #status {
+            color: #64748b;
+            font-size: 13px;
+            min-height: 20px;
+        }
         .username-section {
             display: flex;
-            gap: 5px;
+            gap: 8px;
         }
         .username-section input { flex: 1; }
+        .username-section button {
+            padding: 10px 16px;
+        }
     </style>
 </head>
 <body>
