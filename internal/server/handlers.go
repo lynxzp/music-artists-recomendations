@@ -9,7 +9,8 @@ import (
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	w.Write([]byte(indexHTML))
+	html := indexHTML(s.config.SimilarArtistsLimit, s.config.TopArtistsLimit)
+	w.Write([]byte(html))
 }
 
 func (s *Server) handleArtistGetSimilar(w http.ResponseWriter, r *http.Request) {

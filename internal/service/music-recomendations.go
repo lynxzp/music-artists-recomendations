@@ -6,17 +6,26 @@ import (
 )
 
 type Config struct {
-	APIKey string
+	APIKey              string
+	SimilarArtistsLimit int
+	TopArtistsLimit     int
 }
 
 func Run() error {
-	c := Config{}
+	c := Config{
+		SimilarArtistsLimit: 1000,
+		TopArtistsLimit:     1000,
+	}
 	err := loadConfig(&c)
 	if err != nil {
 		log.Fatal(err)
 	}
 
-	srv, err := server.New(c.APIKey)
+	srv, err := server.New(server.Config{
+		APIKey:              c.APIKey,
+		SimilarArtistsLimit: c.SimilarArtistsLimit,
+		TopArtistsLimit:     c.TopArtistsLimit,
+	})
 	if err != nil {
 		return err
 	}

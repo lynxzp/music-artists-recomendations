@@ -1,6 +1,9 @@
 package server
 
-const indexHTML = `<!DOCTYPE html>
+import "fmt"
+
+func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
+	return fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
     <title>Music Recommendations</title>
@@ -49,7 +52,7 @@ const indexHTML = `<!DOCTYPE html>
         #goBtn:disabled { background: #ccc; }
         table {
             border-collapse: collapse;
-            width: 100%;
+            width: 100%%;
             font-size: 13px;
         }
         th, td {
@@ -107,7 +110,7 @@ const indexHTML = `<!DOCTYPE html>
             }
 
             try {
-                const resp = await fetch('/api/user/top-artists?user=' + encodeURIComponent(username) + '&limit=20');
+                const resp = await fetch('/api/user/top-artists?user=' + encodeURIComponent(username) + '&limit=%d');
                 const data = await resp.json();
                 const artists = data.data.artists || [];
 
@@ -125,6 +128,34 @@ const indexHTML = `<!DOCTYPE html>
         addArtistRow();
         addArtistRow();
         addArtistRow();
+
+        function renderTable(artists, allSimilar) {
+            const sorted = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total);
+
+            // Create set of input artist names for filtering
+            const inputArtistNames = new Set(artists.map(a => a.name.toLowerCase()));
+
+            let html = '<thead><tr><th>Similar Artist</th>';
+            for (const artist of artists) {
+                html += '<th>' + escapeHtml(artist.name) + '</th>';
+            }
+            html += '<th class="total">Total</th></tr></thead><tbody>';
+
+            for (const row of sorted) {
+                // Skip artists that are in the input list
+                if (inputArtistNames.has(row.artist.name.toLowerCase())) continue;
+
+                html += '<tr><td>' + escapeHtml(row.artist.name) + '</td>';
+                for (const artist of artists) {
+                    const match = row.matches[artist.name];
+                    html += '<td class="match">' + (match ? match.toFixed(2) : '') + '</td>';
+                }
+                html += '<td class="match total">' + row.total.toFixed(2) + '</td></tr>';
+            }
+            html += '</tbody>';
+
+            document.getElementById('resultsTable').innerHTML = html;
+        }
 
         async function go() {
             const entries = document.querySelectorAll('.artist-entry');
@@ -147,13 +178,14 @@ const indexHTML = `<!DOCTYPE html>
             // Fetch similar artists for each
             const results = {};
             const allSimilar = new Map(); // name -> { artist data, matches by seed }
+            let lastRenderTime = 0;
 
             for (let i = 0; i < artists.length; i++) {
                 const artist = artists[i];
                 status.textContent = 'Fetching ' + (i + 1) + '/' + artists.length + ': ' + artist.name;
 
                 try {
-                    const resp = await fetch('/api/artist/similar?artist=' + encodeURIComponent(artist.name) + '&limit=50&autocorrect=true');
+                    const resp = await fetch('/api/artist/similar?artist=' + encodeURIComponent(artist.name) + '&limit=%d&autocorrect=true');
                     const data = await resp.json();
                     results[artist.name] = data.data.artists || [];
 
@@ -171,33 +203,20 @@ const indexHTML = `<!DOCTYPE html>
                         entry.matches[artist.name] = weightedMatch;
                         entry.total += weightedMatch;
                     }
+
+                    // Rate-limited progressive rendering (every 10 seconds)
+                    if (Date.now() - lastRenderTime >= 10000) {
+                        renderTable(artists, allSimilar);
+                        lastRenderTime = Date.now();
+                    }
                 } catch (err) {
                     console.error('Error fetching', artist.name, err);
                 }
             }
 
-            // Sort by total match descending
-            const sorted = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total);
-
-            // Build table
-            let html = '<thead><tr><th>Similar Artist</th>';
-            for (const artist of artists) {
-                html += '<th>' + escapeHtml(artist.name) + '</th>';
-            }
-            html += '<th class="total">Total</th></tr></thead><tbody>';
-
-            for (const row of sorted) {
-                html += '<tr><td>' + escapeHtml(row.artist.name) + '</td>';
-                for (const artist of artists) {
-                    const match = row.matches[artist.name];
-                    html += '<td class="match">' + (match ? match.toFixed(2) : '') + '</td>';
-                }
-                html += '<td class="match total">' + row.total.toFixed(2) + '</td></tr>';
-            }
-            html += '</tbody>';
-
-            document.getElementById('resultsTable').innerHTML = html;
-            status.textContent = 'Found ' + sorted.length + ' similar artists';
+            // Final render
+            renderTable(artists, allSimilar);
+            status.textContent = 'Found ' + allSimilar.size + ' similar artists';
             btn.disabled = false;
         }
 
@@ -208,4 +227,5 @@ const indexHTML = `<!DOCTYPE html>
         }
     </script>
 </body>
-</html>`
+</html>`, topArtistsLimit, similarArtistsLimit)
+}

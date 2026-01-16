@@ -10,23 +10,31 @@ import (
 	"time"
 )
 
+type Config struct {
+	APIKey             string
+	SimilarArtistsLimit int
+	TopArtistsLimit     int
+}
+
 type Server struct {
 	client *lastfm.Client
 	cache  *cache.Cache
+	config Config
 }
 
-func New(apiKey string) (*Server, error) {
+func New(cfg Config) (*Server, error) {
 	apiCache, err := cache.New("./cache.db")
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize cache: %w", err)
 	}
 
 	limiter := ratelimit.New(time.Second)
-	client := lastfm.NewClientWithCacheAndLimiter(apiKey, apiCache, limiter)
+	client := lastfm.NewClientWithCacheAndLimiter(cfg.APIKey, apiCache, limiter)
 
 	return &Server{
 		client: client,
 		cache:  apiCache,
+		config: cfg,
 	}, nil
 }
 
