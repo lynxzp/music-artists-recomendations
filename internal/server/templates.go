@@ -65,11 +65,20 @@ const indexHTML = `<!DOCTYPE html>
         td.match { text-align: right; }
         .total { font-weight: bold; background: #f0f8ff; }
         #status { color: #666; font-size: 14px; }
+        .username-section {
+            display: flex;
+            gap: 5px;
+        }
+        .username-section input { flex: 1; }
     </style>
 </head>
 <body>
     <div class="left-panel">
         <h3>Artists</h3>
+        <div class="username-section">
+            <input type="text" id="username" placeholder="Last.fm username">
+            <button onclick="loadUserArtists()">Load</button>
+        </div>
         <div id="artistList"></div>
         <button onclick="addArtistRow()">+ Add Artist</button>
         <button id="goBtn" onclick="go()">Go</button>
@@ -88,6 +97,28 @@ const indexHTML = `<!DOCTYPE html>
                 '<input type="number" placeholder="Weight" value="' + weight + '" step="0.1">' +
                 '<button onclick="this.parentElement.remove()">×</button>';
             document.getElementById('artistList').appendChild(div);
+        }
+
+        async function loadUserArtists() {
+            const username = document.getElementById('username').value.trim();
+            if (!username) {
+                alert('Please enter a username');
+                return;
+            }
+
+            try {
+                const resp = await fetch('/api/user/top-artists?user=' + encodeURIComponent(username) + '&limit=20');
+                const data = await resp.json();
+                const artists = data.data.artists || [];
+
+                document.getElementById('artistList').innerHTML = '';
+                for (const artist of artists) {
+                    addArtistRow(artist.name, artist.playcount);
+                }
+            } catch (err) {
+                console.error('Error loading user artists', err);
+                alert('Failed to load artists for user');
+            }
         }
 
         // Start with a few empty rows

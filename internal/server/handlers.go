@@ -70,3 +70,45 @@ func (s *Server) handleAppendSimilarArtists(w http.ResponseWriter, r *http.Reque
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
+
+func (s *Server) handleUserGetTopArtists(w http.ResponseWriter, r *http.Request) {
+	user := r.URL.Query().Get("user")
+	period := r.URL.Query().Get("period")
+	limitStr := r.URL.Query().Get("limit")
+	pageStr := r.URL.Query().Get("page")
+
+	var limit int
+	if limitStr != "" {
+		var err error
+		limit, err = strconv.Atoi(limitStr)
+		if err != nil {
+			http.Error(w, "invalid limit parameter", http.StatusBadRequest)
+			return
+		}
+	}
+
+	var page int
+	if pageStr != "" {
+		var err error
+		page, err = strconv.Atoi(pageStr)
+		if err != nil {
+			http.Error(w, "invalid page parameter", http.StatusBadRequest)
+			return
+		}
+	}
+
+	artists, err := s.client.UserGetTopArtists(user, period, limit, page)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"data": map[string]interface{}{
+			"artists": artists,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
