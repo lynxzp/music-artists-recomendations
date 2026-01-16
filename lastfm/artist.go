@@ -87,3 +87,38 @@ func (c *Client) ArtistGetSimilar(artist, mbid string, limit int, autocorrect bo
 
 	return result.SimilarArtists.Artist, nil
 }
+
+// AppendSimilarArtists merges two SimilarArtist slices. For artists present in both,
+// match values are summed. The weight parameter scales the match values from b before merging.
+func AppendSimilarArtists(a, b []SimilarArtist, weight float64) []SimilarArtist {
+	if len(b) == 0 {
+		return a
+	}
+
+	// Build map from b keyed by artist name, applying weight to match values
+	bMap := make(map[string]SimilarArtist, len(b))
+	for _, artist := range b {
+		artist.Match *= weight
+		bMap[artist.Name] = artist
+	}
+
+	// Track which artists from b were processed
+	processed := make(map[string]bool, len(b))
+
+	// Iterate through a, summing match values for duplicates
+	for i := range a {
+		if bArtist, exists := bMap[a[i].Name]; exists {
+			a[i].Match += bArtist.Match
+			processed[a[i].Name] = true
+		}
+	}
+
+	// Append unprocessed artists from b (using weighted values from bMap)
+	for _, artist := range b {
+		if !processed[artist.Name] {
+			a = append(a, bMap[artist.Name])
+		}
+	}
+
+	return a
+}

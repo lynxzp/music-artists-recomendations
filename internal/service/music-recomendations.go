@@ -13,6 +13,11 @@ type Config struct {
 	APIKey string
 }
 
+type SeedArtist struct {
+	Name   string
+	Weight float64
+}
+
 func Run() error {
 	c := Config{}
 	err := loadConfig(&c)
@@ -28,17 +33,21 @@ func Run() error {
 
 	limiter := ratelimit.New(time.Second)
 	client := lastfm.NewClientWithCacheAndLimiter(c.APIKey, apiCache, limiter)
-	similar, err := client.ArtistGetSimilar(
-		"Manowar",
-		"",
-		0,
-		true,
-	)
-	if err != nil {
-		return fmt.Errorf("failed to get similar artists: %w", err)
+
+	seeds := []SeedArtist{
+		{Name: "Manowar", Weight: 1487},
 	}
 
-	for _, a := range similar {
+	var result []lastfm.SimilarArtist
+	for _, seed := range seeds {
+		similar, err := client.ArtistGetSimilar(seed.Name, "", 0, true)
+		if err != nil {
+			return fmt.Errorf("failed to get similar artists for %s: %w", seed.Name, err)
+		}
+		result = lastfm.AppendSimilarArtists(result, similar, seed.Weight)
+	}
+
+	for _, a := range result {
 		fmt.Printf("%.2f %s \n", a.Match, a.Name)
 	}
 
