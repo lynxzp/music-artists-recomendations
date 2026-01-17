@@ -72,7 +72,62 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-            max-width: 90px;
+            max-width: 60px;
+        }
+        .period-col { width: 100px; }
+        .period-col .artist-name { max-width: 50px; font-size: 11px; }
+        .total-col { min-width: 200px; }
+        .editable-artist {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+        .artist-input {
+            width: 100px;
+            padding: 4px 6px;
+            font-size: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+        }
+        .weight-input {
+            width: 55px;
+            padding: 4px 6px;
+            font-size: 12px;
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            text-align: right;
+            -moz-appearance: textfield;
+        }
+        .weight-input::-webkit-outer-spin-button,
+        .weight-input::-webkit-inner-spin-button {
+            -webkit-appearance: none;
+            margin: 0;
+        }
+        .remove-btn {
+            padding: 2px 6px;
+            cursor: pointer;
+            background: #fee2e2;
+            border: 1px solid #fecaca;
+            border-radius: 4px;
+            color: #dc2626;
+            font-size: 12px;
+            line-height: 1;
+        }
+        .remove-btn:hover {
+            background: #fecaca;
+        }
+        .add-row-btn {
+            width: 100%%;
+            margin-top: 8px;
+            padding: 6px 12px;
+            background: #f0fdf4;
+            border: 1px dashed #86efac;
+            color: #16a34a;
+            font-size: 12px;
+        }
+        .add-row-btn:hover {
+            background: #dcfce7;
+            border-color: #4ade80;
         }
         .playcount {
             color: #94a3b8;
@@ -174,6 +229,15 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         .username-section input { flex: 1; }
         .username-section button {
             padding: 10px 16px;
+            background: linear-gradient(135deg, #6366f1 0%%, #4f46e5 100%%);
+            color: white;
+            border: none;
+            font-weight: 600;
+            box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
+        }
+        .username-section button:hover {
+            background: linear-gradient(135deg, #4f46e5 0%%, #4338ca 100%%);
+            box-shadow: 0 4px 8px rgba(99, 102, 241, 0.4);
         }
         .section {
             display: flex;
@@ -217,17 +281,18 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
                 <table class="period-table" id="periodTable">
                     <thead>
                         <tr>
-                            <th>Overall</th>
-                            <th>12 Month</th>
-                            <th>1 Month</th>
-                            <th>Total</th>
+                            <th class="period-col">Overall</th>
+                            <th class="period-col">12 Month</th>
+                            <th class="period-col">1 Month</th>
+                            <th class="total-col">Total (editable)</th>
                         </tr>
                     </thead>
                     <tbody id="periodTableBody"></tbody>
                 </table>
+                <button class="add-row-btn" onclick="addArtistRow()">+ Add Artist</button>
             </div>
         </div>
-        <button id="goBtn" onclick="go()">Go</button>
+        <button id="goBtn" onclick="go()">Find Similar Artists</button>
         <div id="status"></div>
     </div>
     <div class="right-panel">
@@ -310,10 +375,11 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
                 for (const period of PERIODS) {
                     const artists = periodData[period.key] || [];
                     const td = document.createElement('td');
+                    td.className = 'period-col';
                     if (artists[i]) {
                         const a = artists[i];
                         const isMulti = artistPeriodCount.get(a.name.toLowerCase()) > 1;
-                        td.className = isMulti ? 'multi-period' : '';
+                        if (isMulti) td.className += ' multi-period';
                         td.innerHTML = '<div class="artist-cell">' +
                             '<span class="artist-name" title="' + escapeHtml(a.name) + '">' + escapeHtml(a.name) + '</span>' +
                             '<span class="playcount">' + a.playcount + '</span>' +
@@ -321,20 +387,68 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
                     }
                     tr.appendChild(td);
                 }
-                // Total column - show artist from aggregatedArtists
+                // Total column - editable inputs
                 const td = document.createElement('td');
+                td.className = 'total-col';
                 if (aggregatedArtists[i]) {
                     const a = aggregatedArtists[i];
-                    const isMulti = artistPeriodCount.get(a.name.toLowerCase()) > 1;
-                    td.className = isMulti ? 'multi-period' : '';
-                    td.innerHTML = '<div class="artist-cell">' +
-                        '<span class="artist-name" title="' + escapeHtml(a.name) + '">' + escapeHtml(a.name) + '</span>' +
-                        '<span class="playcount">' + a.weight + '</span>' +
+                    td.innerHTML = '<div class="editable-artist">' +
+                        '<input type="text" class="artist-input" value="' + escapeHtml(a.name) + '">' +
+                        '<input type="number" class="weight-input" value="' + a.weight + '">' +
+                        '<button class="remove-btn" onclick="removeArtistRow(this)">\u00d7</button>' +
                         '</div>';
                 }
                 tr.appendChild(td);
                 tbody.appendChild(tr);
             }
+        }
+
+        function addArtistRow() {
+            const tbody = document.getElementById('periodTableBody');
+            const tr = document.createElement('tr');
+
+            // Empty period columns
+            for (let i = 0; i < PERIODS.length; i++) {
+                const td = document.createElement('td');
+                td.className = 'period-col';
+                tr.appendChild(td);
+            }
+
+            // Editable total column
+            const td = document.createElement('td');
+            td.className = 'total-col';
+            td.innerHTML = '<div class="editable-artist">' +
+                '<input type="text" class="artist-input" value="" placeholder="Artist name">' +
+                '<input type="number" class="weight-input" value="100">' +
+                '<button class="remove-btn" onclick="removeArtistRow(this)">\u00d7</button>' +
+                '</div>';
+            tr.appendChild(td);
+            tbody.appendChild(tr);
+
+            // Focus the new input
+            tr.querySelector('.artist-input').focus();
+        }
+
+        function removeArtistRow(btn) {
+            const tr = btn.closest('tr');
+            tr.remove();
+        }
+
+        function getEditedArtists() {
+            const artists = [];
+            const rows = document.querySelectorAll('#periodTableBody tr');
+            for (const row of rows) {
+                const nameInput = row.querySelector('.artist-input');
+                const weightInput = row.querySelector('.weight-input');
+                if (nameInput && weightInput) {
+                    const name = nameInput.value.trim();
+                    const weight = parseInt(weightInput.value, 10) || 0;
+                    if (name && weight > 0) {
+                        artists.push({ name, weight });
+                    }
+                }
+            }
+            return artists;
         }
 
         function renderTable(artists, allSimilar) {
@@ -367,11 +481,11 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         }
 
         async function go() {
-            // Use the pre-computed aggregated artists from the Total column
-            const artists = aggregatedArtists;
+            // Read artists/weights from editable Total column inputs
+            const artists = getEditedArtists();
 
             if (artists.length === 0) {
-                alert('Please load artists first');
+                alert('Please load artists first or add them manually');
                 return;
             }
 
