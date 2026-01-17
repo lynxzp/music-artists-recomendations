@@ -33,11 +33,17 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         }
         .right-panel {
             flex: 1;
-            overflow: auto;
             background: #fff;
             border-radius: 12px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
             padding: 20px;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+        .table-scroll {
+            overflow: auto;
+            flex: 1;
         }
         .period-table-container {
             flex: 1;
@@ -194,7 +200,8 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         th {
             background: #f8fafc;
             position: sticky;
-            top: 0;
+            top: -1px;
+            z-index: 1;
             font-weight: 600;
             color: #475569;
             font-size: 12px;
@@ -297,7 +304,9 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
     </div>
     <div class="right-panel">
         <h3>Recommended Artists</h3>
-        <table id="resultsTable"></table>
+        <div class="table-scroll">
+            <table id="resultsTable"></table>
+        </div>
     </div>
 
     <script>
