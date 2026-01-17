@@ -11,9 +11,10 @@ import (
 )
 
 type Config struct {
-	APIKey             string
+	APIKey              string
 	SimilarArtistsLimit int
 	TopArtistsLimit     int
+	CachePath           string
 }
 
 type Server struct {
@@ -23,7 +24,11 @@ type Server struct {
 }
 
 func New(cfg Config) (*Server, error) {
-	apiCache, err := cache.New("./cache.db")
+	cachePath := cfg.CachePath
+	if cachePath == "" {
+		cachePath = "./cache.db"
+	}
+	apiCache, err := cache.New(cachePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize cache: %w", err)
 	}
