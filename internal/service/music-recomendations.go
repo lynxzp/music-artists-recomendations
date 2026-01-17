@@ -13,8 +13,8 @@ type Config struct {
 
 func Run() error {
 	c := Config{
-		SimilarArtistsLimit: 300,
-		TopArtistsLimit:     300,
+		SimilarArtistsLimit: 100,
+		TopArtistsLimit:     100,
 	}
 	err := loadConfig(&c)
 	if err != nil {

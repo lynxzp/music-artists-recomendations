@@ -21,7 +21,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             line-height: 1.5;
         }
         .left-panel {
-            width: 320px;
+            width: 550px;
             flex-shrink: 0;
             display: flex;
             flex-direction: column;
@@ -31,12 +31,6 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             border-radius: 12px;
             box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
         }
-        .left-panel h3 {
-            margin: 0 0 4px 0;
-            font-size: 18px;
-            font-weight: 600;
-            color: #1a202c;
-        }
         .right-panel {
             flex: 1;
             overflow: auto;
@@ -45,26 +39,52 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             box-shadow: 0 1px 3px rgba(0,0,0,0.08), 0 4px 12px rgba(0,0,0,0.05);
             padding: 20px;
         }
-        .artist-entry {
-            display: flex;
-            gap: 8px;
-            align-items: center;
+        .period-table-container {
+            flex: 1;
+            min-height: 0;
+            overflow: auto;
         }
-        .artist-entry input[type="text"] { flex: 1; }
-        .artist-entry input[type="number"] { width: 75px; }
-        .artist-entry button {
-            width: 32px;
-            height: 38px;
+        .period-table {
+            width: 100%%;
+            border-collapse: collapse;
+            font-size: 12px;
+        }
+        .period-table th {
             background: #f1f5f9;
-            border: 1px solid #e2e8f0;
-            color: #64748b;
-            font-size: 16px;
-            border-radius: 6px;
+            padding: 8px 10px;
+            text-align: left;
+            font-weight: 600;
+            color: #475569;
+            border-bottom: 2px solid #e2e8f0;
         }
-        .artist-entry button:hover {
-            background: #fee2e2;
-            border-color: #fca5a5;
-            color: #dc2626;
+        .period-table td {
+            padding: 4px 8px;
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: top;
+        }
+        .artist-cell {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 8px;
+        }
+        .artist-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 90px;
+        }
+        .playcount {
+            color: #94a3b8;
+            font-size: 11px;
+            font-variant-numeric: tabular-nums;
+        }
+        .multi-period {
+            background: #fef3c7;
+        }
+        .multi-period .artist-name {
+            font-weight: 500;
+            color: #92400e;
         }
         input, button {
             padding: 10px 12px;
@@ -155,34 +175,74 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         .username-section button {
             padding: 10px 16px;
         }
+        .section {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .section.grow {
+            flex: 1;
+            min-height: 0;
+        }
+        .section-label {
+            font-size: 13px;
+            font-weight: 500;
+            color: #475569;
+        }
+        .section-hint {
+            font-size: 12px;
+            color: #94a3b8;
+            font-style: italic;
+        }
+        .right-panel h3 {
+            margin: 0 0 16px 0;
+            font-size: 18px;
+            font-weight: 600;
+            color: #1a202c;
+        }
     </style>
 </head>
 <body>
     <div class="left-panel">
-        <h3>Artists</h3>
-        <div class="username-section">
-            <input type="text" id="username" placeholder="Last.fm username">
-            <button onclick="loadUserArtists()">Load</button>
+        <div class="section">
+            <label class="section-label">Get top artists from Last.fm user:</label>
+            <div class="username-section">
+                <input type="text" id="username" placeholder="Last.fm username">
+                <button onclick="loadUserArtists()">Load</button>
+            </div>
         </div>
-        <div id="artistList"></div>
-        <button onclick="addArtistRow()">+ Add Artist</button>
+        <div class="section grow">
+            <label class="section-label">Your top artists by time period:</label>
+            <div class="period-table-container">
+                <table class="period-table" id="periodTable">
+                    <thead>
+                        <tr>
+                            <th>Overall</th>
+                            <th>12 Month</th>
+                            <th>1 Month</th>
+                            <th>Total</th>
+                        </tr>
+                    </thead>
+                    <tbody id="periodTableBody"></tbody>
+                </table>
+            </div>
+        </div>
         <button id="goBtn" onclick="go()">Go</button>
         <div id="status"></div>
     </div>
     <div class="right-panel">
+        <h3>Recommended Artists</h3>
         <table id="resultsTable"></table>
     </div>
 
     <script>
-        function addArtistRow(name = '', weight = 1) {
-            const div = document.createElement('div');
-            div.className = 'artist-entry';
-            div.innerHTML =
-                '<input type="text" placeholder="Artist name" value="' + name + '">' +
-                '<input type="number" placeholder="Weight" value="' + weight + '" step="0.1">' +
-                '<button onclick="this.parentElement.remove()">×</button>';
-            document.getElementById('artistList').appendChild(div);
-        }
+        const PERIODS = [
+            { key: 'overall', label: 'Overall' },
+            { key: '12month', label: '12 Month' },
+            { key: '1month', label: '1 Month' }
+        ];
+        let periodData = {};  // { period: [{ name, playcount }, ...] }
+        let aggregatedArtists = [];  // [{ name, weight }, ...] sorted by weight desc
 
         async function loadUserArtists() {
             const username = document.getElementById('username').value.trim();
@@ -191,31 +251,98 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
                 return;
             }
 
-            try {
-                const resp = await fetch('/api/user/top-artists?user=' + encodeURIComponent(username) + '&limit=%d');
-                const data = await resp.json();
-                const artists = data.data.artists || [];
+            const status = document.getElementById('status');
+            status.textContent = 'Loading artists for all periods...';
 
-                document.getElementById('artistList').innerHTML = '';
-                for (const artist of artists) {
-                    addArtistRow(artist.name, artist.playcount);
+            try {
+                const promises = PERIODS.map(p =>
+                    fetch('/api/user/top-artists?user=' + encodeURIComponent(username) + '&limit=%d&period=' + p.key)
+                        .then(r => r.json())
+                        .then(data => ({ period: p.key, artists: data.data.artists || [] }))
+                );
+
+                const results = await Promise.all(promises);
+                periodData = {};
+                for (const r of results) {
+                    periodData[r.period] = r.artists.map(a => ({ name: a.name, playcount: parseInt(a.playcount, 10) || 0 }));
                 }
+
+                renderPeriodTable();
+                status.textContent = 'Loaded artists for ' + username;
             } catch (err) {
                 console.error('Error loading user artists', err);
                 alert('Failed to load artists for user');
+                status.textContent = '';
             }
         }
 
-        // Start with a few empty rows
-        addArtistRow();
-        addArtistRow();
-        addArtistRow();
+        function renderPeriodTable() {
+            const tbody = document.getElementById('periodTableBody');
+            tbody.innerHTML = '';
+
+            // Calculate total weight for each artist across all periods
+            const artistTotals = new Map();
+            const artistNames = new Map(); // key -> proper cased name
+            const artistPeriodCount = new Map();
+            for (const period of PERIODS) {
+                const artists = periodData[period.key] || [];
+                for (const a of artists) {
+                    const key = a.name.toLowerCase();
+                    artistTotals.set(key, (artistTotals.get(key) || 0) + a.playcount);
+                    artistPeriodCount.set(key, (artistPeriodCount.get(key) || 0) + 1);
+                    if (!artistNames.has(key)) artistNames.set(key, a.name);
+                }
+            }
+
+            // Build sorted aggregated list and store globally
+            aggregatedArtists = Array.from(artistTotals.entries())
+                .sort((a, b) => b[1] - a[1])
+                .map(([key, weight]) => ({ name: artistNames.get(key), weight }));
+
+            // Find the max number of rows needed
+            const maxRows = Math.max(
+                ...PERIODS.map(p => (periodData[p.key] || []).length),
+                aggregatedArtists.length
+            );
+
+            for (let i = 0; i < maxRows; i++) {
+                const tr = document.createElement('tr');
+                for (const period of PERIODS) {
+                    const artists = periodData[period.key] || [];
+                    const td = document.createElement('td');
+                    if (artists[i]) {
+                        const a = artists[i];
+                        const isMulti = artistPeriodCount.get(a.name.toLowerCase()) > 1;
+                        td.className = isMulti ? 'multi-period' : '';
+                        td.innerHTML = '<div class="artist-cell">' +
+                            '<span class="artist-name" title="' + escapeHtml(a.name) + '">' + escapeHtml(a.name) + '</span>' +
+                            '<span class="playcount">' + a.playcount + '</span>' +
+                            '</div>';
+                    }
+                    tr.appendChild(td);
+                }
+                // Total column - show artist from aggregatedArtists
+                const td = document.createElement('td');
+                if (aggregatedArtists[i]) {
+                    const a = aggregatedArtists[i];
+                    const isMulti = artistPeriodCount.get(a.name.toLowerCase()) > 1;
+                    td.className = isMulti ? 'multi-period' : '';
+                    td.innerHTML = '<div class="artist-cell">' +
+                        '<span class="artist-name" title="' + escapeHtml(a.name) + '">' + escapeHtml(a.name) + '</span>' +
+                        '<span class="playcount">' + a.weight + '</span>' +
+                        '</div>';
+                }
+                tr.appendChild(td);
+                tbody.appendChild(tr);
+            }
+        }
 
         function renderTable(artists, allSimilar) {
             const sorted = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total);
 
-            // Create set of input artist names for filtering
-            const inputArtistNames = new Set(artists.map(a => a.name.toLowerCase()));
+            // Create set of top 30 input artist names (by weight) for filtering
+            const top30 = [...artists].sort((a, b) => b.weight - a.weight).slice(0, 30);
+            const inputArtistNames = new Set(top30.map(a => a.name.toLowerCase()));
 
             let html = '<thead><tr><th>Similar Artist</th>';
             for (const artist of artists) {
@@ -224,7 +351,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             html += '<th class="total">Total</th></tr></thead><tbody>';
 
             for (const row of sorted) {
-                // Skip artists that are in the input list
+                // Skip artists that are in the top 30 input list
                 if (inputArtistNames.has(row.artist.name.toLowerCase())) continue;
 
                 html += '<tr><td>' + escapeHtml(row.artist.name) + '</td>';
@@ -240,16 +367,11 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         }
 
         async function go() {
-            const entries = document.querySelectorAll('.artist-entry');
-            const artists = [];
-            entries.forEach(entry => {
-                const name = entry.querySelector('input[type="text"]').value.trim();
-                const weight = parseFloat(entry.querySelector('input[type="number"]').value) || 1;
-                if (name) artists.push({ name, weight });
-            });
+            // Use the pre-computed aggregated artists from the Total column
+            const artists = aggregatedArtists;
 
             if (artists.length === 0) {
-                alert('Please enter at least one artist');
+                alert('Please load artists first');
                 return;
             }
 
