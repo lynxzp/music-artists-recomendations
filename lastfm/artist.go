@@ -60,7 +60,7 @@ func (c *Client) ArtistGetSimilar(artist, mbid string, limit int, autocorrect bo
 		if c.limiter != nil {
 			c.limiter.Wait()
 		}
-		resp, err := http.Get(requestURL)
+		resp, err := c.httpClient.Get(requestURL)
 		if err != nil {
 			return nil, fmt.Errorf("request failed: %w", err)
 		}

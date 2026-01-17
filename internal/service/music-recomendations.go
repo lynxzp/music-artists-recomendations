@@ -1,6 +1,7 @@
 package service
 
 import (
+	"log/slog"
 	"music-recomendations/internal/server"
 	"os"
 )
@@ -13,6 +14,8 @@ type Config struct {
 }
 
 func Run() error {
+	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+
 	c := Config{
 		SimilarArtistsLimit: 100,
 		TopArtistsLimit:     100,
@@ -25,8 +28,10 @@ func Run() error {
 		SimilarArtistsLimit: c.SimilarArtistsLimit,
 		TopArtistsLimit:     c.TopArtistsLimit,
 		CachePath:           c.CachePath,
+		Logger:              logger,
 	})
 	if err != nil {
+		logger.Error("failed to create server", "error", err)
 		return err
 	}
 	defer srv.Close()

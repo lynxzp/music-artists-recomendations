@@ -19,6 +19,11 @@ func (s *Server) handleArtistGetSimilar(w http.ResponseWriter, r *http.Request) 
 	limitStr := r.URL.Query().Get("limit")
 	autocorrectStr := r.URL.Query().Get("autocorrect")
 
+	if !isValidArtistName(artist) {
+		http.Error(w, "invalid artist parameter", http.StatusBadRequest)
+		return
+	}
+
 	var limit int
 	if limitStr != "" {
 		var err error
@@ -33,7 +38,8 @@ func (s *Server) handleArtistGetSimilar(w http.ResponseWriter, r *http.Request) 
 
 	artists, err := s.client.ArtistGetSimilar(artist, mbid, limit, autocorrect)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		s.logger.Error("failed to get similar artists", "artist", artist, "error", err)
+		http.Error(w, "failed to fetch similar artists", http.StatusInternalServerError)
 		return
 	}
 
@@ -78,6 +84,15 @@ func (s *Server) handleUserGetTopArtists(w http.ResponseWriter, r *http.Request)
 	limitStr := r.URL.Query().Get("limit")
 	pageStr := r.URL.Query().Get("page")
 
+	if !isValidUsername(user) {
+		http.Error(w, "invalid user parameter", http.StatusBadRequest)
+		return
+	}
+	if !isValidPeriod(period) {
+		http.Error(w, "invalid period parameter", http.StatusBadRequest)
+		return
+	}
+
 	var limit int
 	if limitStr != "" {
 		var err error
@@ -100,7 +115,8 @@ func (s *Server) handleUserGetTopArtists(w http.ResponseWriter, r *http.Request)
 
 	artists, err := s.client.UserGetTopArtists(user, period, limit, page)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		s.logger.Error("failed to get top artists", "user", user, "period", period, "error", err)
+		http.Error(w, "failed to fetch top artists", http.StatusInternalServerError)
 		return
 	}
 

@@ -2,9 +2,9 @@ package server
 
 import "net/http"
 
-func (s *Server) registerRoutes() {
-	http.HandleFunc("GET /", s.handleIndex)
-	http.HandleFunc("GET /api/artist/similar", s.handleArtistGetSimilar)
-	http.HandleFunc("POST /api/append", s.handleAppendSimilarArtists)
-	http.HandleFunc("GET /api/user/top-artists", s.handleUserGetTopArtists)
+func (s *Server) registerRoutes(mux *http.ServeMux) {
+	mux.HandleFunc("GET /", s.handleIndex)
+	mux.HandleFunc("GET /api/artist/similar", s.handleArtistGetSimilar)
+	mux.HandleFunc("POST /api/append", s.handleAppendSimilarArtists)
+	mux.HandleFunc("GET /api/user/top-artists", s.handleUserGetTopArtists)
 }

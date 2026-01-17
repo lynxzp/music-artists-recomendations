@@ -14,21 +14,20 @@ type Limiter struct {
 func New(interval time.Duration) *Limiter {
 	return &Limiter{
 		interval: interval,
+		lastReq:  time.Now(),
 	}
 }
 
 func (l *Limiter) Wait() {
 	l.mu.Lock()
-	defer l.mu.Unlock()
-
-	if l.lastReq.IsZero() {
-		l.lastReq = time.Now()
-		return
+	sleepDuration := l.interval - time.Since(l.lastReq)
+	if sleepDuration < 0 {
+		sleepDuration = 0
 	}
+	l.lastReq = time.Now().Add(sleepDuration)
+	l.mu.Unlock()
 
-	elapsed := time.Since(l.lastReq)
-	if elapsed < l.interval {
-		time.Sleep(l.interval - elapsed)
+	if sleepDuration > 0 {
+		time.Sleep(sleepDuration)
 	}
-	l.lastReq = time.Now()
 }
