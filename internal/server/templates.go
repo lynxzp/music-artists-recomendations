@@ -330,7 +330,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
 
             try {
                 const promises = PERIODS.map(p =>
-                    fetch('/api/user/top-artists?user=' + encodeURIComponent(username) + '&limit=%d&period=' + p.key)
+                    fetch('./api/user/top-artists?user=' + encodeURIComponent(username) + '&limit=%d&period=' + p.key)
                         .then(r => r.json())
                         .then(data => ({ period: p.key, artists: data.data.artists || [] }))
                 );
@@ -512,7 +512,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
                 status.textContent = 'Fetching ' + (i + 1) + '/' + artists.length + ': ' + artist.name;
 
                 try {
-                    const resp = await fetch('/api/artist/similar?artist=' + encodeURIComponent(artist.name) + '&limit=%d&autocorrect=true');
+                    const resp = await fetch('./api/artist/similar?artist=' + encodeURIComponent(artist.name) + '&limit=%d&autocorrect=true');
                     const data = await resp.json();
                     results[artist.name] = data.data.artists || [];
 

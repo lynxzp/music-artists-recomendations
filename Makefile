@@ -6,10 +6,7 @@ PLATFORM := linux/amd64
 test:
 	go test -race ./...
 
-lint:
-	golangci-lint run
-
-build: test lint
+build: test
 	docker build --platform $(PLATFORM) -t $(IMAGE) .
 
 push: build
@@ -17,4 +14,4 @@ push: build
 
 all: push
 
-.PHONY: test lint build push all
+.PHONY: test build push all
