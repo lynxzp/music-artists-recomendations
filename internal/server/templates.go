@@ -395,13 +395,37 @@ func indexHTML() string {
         let resultsExpanded = false;
         const artistInfoCache = new Map();
 
+        async function fetchWithRetry(url, maxRetries = 120, statusCallback = null) {
+            const delay = 100;
+            let lastError;
+
+            for (let attempt = 0; attempt <= maxRetries; attempt++) {
+                try {
+                    const resp = await fetch(url);
+                    if (resp.ok) {
+                        return await resp.json();
+                    }
+                    lastError = new Error('HTTP ' + resp.status);
+                } catch (err) {
+                    lastError = err;
+                }
+
+                if (attempt < maxRetries) {
+                    if (statusCallback) {
+                        statusCallback('Retry ' + (attempt + 1) + '/' + maxRetries + '...');
+                    }
+                    await new Promise(r => setTimeout(r, delay));
+                }
+            }
+            throw lastError;
+        }
+
         async function fetchArtistInfo(name) {
             if (artistInfoCache.has(name)) {
                 return artistInfoCache.get(name);
             }
             try {
-                const resp = await fetch('./api/artist/info?artist=' + encodeURIComponent(name));
-                const data = await resp.json();
+                const data = await fetchWithRetry('./api/artist/info?artist=' + encodeURIComponent(name));
                 const info = data.data.artist;
                 artistInfoCache.set(name, info);
                 return info;
@@ -460,30 +484,25 @@ func indexHTML() string {
             }
 
             const status = document.getElementById('status');
-            status.textContent = 'Loading artists for all periods...';
+            periodData = {};
 
-            try {
-                const promises = PERIODS.map(p =>
-                    fetch('./api/user/top-artists?user=' + encodeURIComponent(username) + '&period=' + p.key)
-                        .then(r => r.json())
-                        .then(data => ({ period: p.key, artists: data.data.artists || [] }))
-                );
-
-                const results = await Promise.all(promises);
-                periodData = {};
-                for (const r of results) {
-                    periodData[r.period] = r.artists
-                    .map(a => ({ name: a.name, playcount: parseInt(a.playcount, 10) || 0 }))
-                    .filter(a => a.playcount >= 5);
+            for (const p of PERIODS) {
+                status.textContent = 'Loading ' + p.label + ' artists...';
+                try {
+                    const data = await fetchWithRetry(
+                        './api/user/top-artists?user=' + encodeURIComponent(username) + '&period=' + p.key
+                    );
+                    periodData[p.key] = (data.data.artists || [])
+                        .map(a => ({ name: a.name, playcount: parseInt(a.playcount, 10) || 0 }))
+                        .filter(a => a.playcount >= 5);
+                } catch (err) {
+                    console.error('Error loading ' + p.key, err);
+                    periodData[p.key] = [];
                 }
-
-                renderPeriodTable();
-                status.textContent = 'Loaded artists for ' + username;
-            } catch (err) {
-                console.error('Error loading user artists', err);
-                alert('Failed to load artists for user');
-                status.textContent = '';
             }
+
+            renderPeriodTable();
+            status.textContent = 'Loaded artists for ' + username;
         }
 
         function renderPeriodTable() {
@@ -653,15 +672,20 @@ func indexHTML() string {
             // Fetch similar artists for each
             const results = {};
             const allSimilar = new Map(); // name -> { artist data, matches by seed }
+            const failedArtists = [];
             let lastRenderTime = 0;
 
             for (let i = 0; i < artists.length; i++) {
                 const artist = artists[i];
-                status.textContent = 'Fetching ' + (i + 1) + '/' + artists.length + ': ' + artist.name;
+                const baseStatus = 'Fetching ' + (i + 1) + '/' + artists.length + ': ' + artist.name;
+                status.textContent = baseStatus;
 
                 try {
-                    const resp = await fetch('./api/artist/similar?artist=' + encodeURIComponent(artist.name));
-                    const data = await resp.json();
+                    const data = await fetchWithRetry(
+                        './api/artist/similar?artist=' + encodeURIComponent(artist.name),
+                        120,
+                        (retryMsg) => { status.textContent = baseStatus + ' - ' + retryMsg; }
+                    );
                     results[artist.name] = data.data.artists || [];
 
                     // Aggregate similar artists
@@ -686,12 +710,17 @@ func indexHTML() string {
                     }
                 } catch (err) {
                     console.error('Error fetching', artist.name, err);
+                    failedArtists.push(artist.name);
                 }
             }
 
             // Final render
             renderTable(artists, allSimilar);
-            status.textContent = 'Showing top 100 of ' + allSimilar.size + ' similar artists';
+            if (failedArtists.length > 0) {
+                status.textContent = 'Done. Failed to load: ' + failedArtists.join(', ');
+            } else {
+                status.textContent = 'Showing top 100 of ' + allSimilar.size + ' similar artists';
+            }
             btn.disabled = false;
 
             // Fetch and display artist info (images and tags)
