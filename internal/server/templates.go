@@ -1,9 +1,7 @@
 package server
 
-import "fmt"
-
-func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
-	return fmt.Sprintf(`<!DOCTYPE html>
+func indexHTML() string {
+	return `<!DOCTYPE html>
 <html>
 <head>
     <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -52,7 +50,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             overflow: auto;
         }
         .period-table {
-            width: 100%%;
+            width: 100%;
             border-collapse: collapse;
             font-size: 12px;
         }
@@ -124,7 +122,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             background: #fecaca;
         }
         .add-row-btn {
-            width: 100%%;
+            width: 100%;
             margin-top: 8px;
             padding: 6px 12px;
             background: #f0fdf4;
@@ -170,7 +168,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             border-color: #cbd5e1;
         }
         #goBtn {
-            background: linear-gradient(135deg, #6366f1 0%%, #4f46e5 100%%);
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
             color: white;
             border: none;
             padding: 14px 16px;
@@ -180,7 +178,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
         }
         #goBtn:hover {
-            background: linear-gradient(135deg, #4f46e5 0%%, #4338ca 100%%);
+            background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
             box-shadow: 0 4px 8px rgba(99, 102, 241, 0.4);
         }
         #goBtn:disabled {
@@ -190,7 +188,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         }
         table {
             border-collapse: collapse;
-            width: 100%%;
+            width: 100%;
             font-size: 13px;
         }
         th, td {
@@ -237,14 +235,14 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         .username-section input { flex: 1; }
         .username-section button {
             padding: 10px 16px;
-            background: linear-gradient(135deg, #6366f1 0%%, #4f46e5 100%%);
+            background: linear-gradient(135deg, #6366f1 0%, #4f46e5 100%);
             color: white;
             border: none;
             font-weight: 600;
             box-shadow: 0 2px 4px rgba(99, 102, 241, 0.3);
         }
         .username-section button:hover {
-            background: linear-gradient(135deg, #4f46e5 0%%, #4338ca 100%%);
+            background: linear-gradient(135deg, #4f46e5 0%, #4338ca 100%);
             box-shadow: 0 4px 8px rgba(99, 102, 241, 0.4);
         }
         .section {
@@ -283,12 +281,12 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             }
 
             .left-panel {
-                width: 100%%;
+                width: 100%;
                 max-height: none;
             }
 
             .right-panel {
-                width: 100%%;
+                width: 100%;
                 min-height: 400px;
             }
 
@@ -325,7 +323,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             display: none;
         }
         .explain-text.visible { display: block; }
-        .period-table.collapsed .total-col { width: 100%%; }
+        .period-table.collapsed .total-col { width: 100%; }
         .period-table.collapsed .artist-input { width: 200px; }
         .results-header {
             display: flex;
@@ -402,7 +400,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
                 return artistInfoCache.get(name);
             }
             try {
-                const resp = await fetch('./api/artist/info?artist=' + encodeURIComponent(name) + '&autocorrect=true');
+                const resp = await fetch('./api/artist/info?artist=' + encodeURIComponent(name));
                 const data = await resp.json();
                 const info = data.data.artist;
                 artistInfoCache.set(name, info);
@@ -466,7 +464,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
 
             try {
                 const promises = PERIODS.map(p =>
-                    fetch('./api/user/top-artists?user=' + encodeURIComponent(username) + '&limit=%d&period=' + p.key)
+                    fetch('./api/user/top-artists?user=' + encodeURIComponent(username) + '&period=' + p.key)
                         .then(r => r.json())
                         .then(data => ({ period: p.key, artists: data.data.artists || [] }))
                 );
@@ -662,7 +660,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
                 status.textContent = 'Fetching ' + (i + 1) + '/' + artists.length + ': ' + artist.name;
 
                 try {
-                    const resp = await fetch('./api/artist/similar?artist=' + encodeURIComponent(artist.name) + '&limit=%d&autocorrect=true');
+                    const resp = await fetch('./api/artist/similar?artist=' + encodeURIComponent(artist.name));
                     const data = await resp.json();
                     results[artist.name] = data.data.artists || [];
 
@@ -707,5 +705,5 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         }
     </script>
 </body>
-</html>`, topArtistsLimit, similarArtistsLimit)
+</html>`
 }

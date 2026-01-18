@@ -4,39 +4,23 @@ import (
 	"encoding/json"
 	"music-recomendations/lastfm"
 	"net/http"
-	"strconv"
 )
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
-	html := indexHTML(s.config.SimilarArtistsLimit, s.config.TopArtistsLimit)
+	html := indexHTML()
 	w.Write([]byte(html))
 }
 
 func (s *Server) handleArtistGetSimilar(w http.ResponseWriter, r *http.Request) {
 	artist := r.URL.Query().Get("artist")
-	mbid := r.URL.Query().Get("mbid")
-	limitStr := r.URL.Query().Get("limit")
-	autocorrectStr := r.URL.Query().Get("autocorrect")
 
 	if !isValidArtistName(artist) {
 		http.Error(w, "invalid artist parameter", http.StatusBadRequest)
 		return
 	}
 
-	var limit int
-	if limitStr != "" {
-		var err error
-		limit, err = strconv.Atoi(limitStr)
-		if err != nil {
-			http.Error(w, "invalid limit parameter", http.StatusBadRequest)
-			return
-		}
-	}
-
-	autocorrect := autocorrectStr == "true" || autocorrectStr == "1"
-
-	artists, err := s.client.ArtistGetSimilar(artist, mbid, limit, autocorrect)
+	artists, err := s.client.ArtistGetSimilar(artist, "", s.config.SimilarArtistsLimit, true)
 	if err != nil {
 		s.logger.Error("failed to get similar artists", "artist", artist, "error", err)
 		http.Error(w, "failed to fetch similar artists", http.StatusInternalServerError)
@@ -55,17 +39,13 @@ func (s *Server) handleArtistGetSimilar(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) handleArtistGetInfo(w http.ResponseWriter, r *http.Request) {
 	artist := r.URL.Query().Get("artist")
-	mbid := r.URL.Query().Get("mbid")
-	autocorrectStr := r.URL.Query().Get("autocorrect")
 
-	if !isValidArtistName(artist) && mbid == "" {
+	if !isValidArtistName(artist) {
 		http.Error(w, "invalid artist parameter", http.StatusBadRequest)
 		return
 	}
 
-	autocorrect := autocorrectStr == "true" || autocorrectStr == "1"
-
-	info, err := s.client.ArtistGetInfo(artist, mbid, autocorrect)
+	info, err := s.client.ArtistGetInfo(artist, "", true)
 	if err != nil {
 		s.logger.Error("failed to get artist info", "artist", artist, "error", err)
 		http.Error(w, "failed to fetch artist info", http.StatusInternalServerError)
@@ -110,8 +90,6 @@ func (s *Server) handleAppendSimilarArtists(w http.ResponseWriter, r *http.Reque
 func (s *Server) handleUserGetTopArtists(w http.ResponseWriter, r *http.Request) {
 	user := r.URL.Query().Get("user")
 	period := r.URL.Query().Get("period")
-	limitStr := r.URL.Query().Get("limit")
-	pageStr := r.URL.Query().Get("page")
 
 	if !isValidUsername(user) {
 		http.Error(w, "invalid user parameter", http.StatusBadRequest)
@@ -122,27 +100,7 @@ func (s *Server) handleUserGetTopArtists(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	var limit int
-	if limitStr != "" {
-		var err error
-		limit, err = strconv.Atoi(limitStr)
-		if err != nil {
-			http.Error(w, "invalid limit parameter", http.StatusBadRequest)
-			return
-		}
-	}
-
-	var page int
-	if pageStr != "" {
-		var err error
-		page, err = strconv.Atoi(pageStr)
-		if err != nil {
-			http.Error(w, "invalid page parameter", http.StatusBadRequest)
-			return
-		}
-	}
-
-	artists, err := s.client.UserGetTopArtists(user, period, limit, page)
+	artists, err := s.client.UserGetTopArtists(user, period, s.config.TopArtistsLimit, 0)
 	if err != nil {
 		s.logger.Error("failed to get top artists", "user", user, "period", period, "error", err)
 		http.Error(w, "failed to fetch top artists", http.StatusInternalServerError)
