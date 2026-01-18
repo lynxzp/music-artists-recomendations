@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"music-recomendations/lastfm"
 	"net/http"
+	"strings"
 )
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
@@ -50,6 +51,11 @@ func (s *Server) handleArtistGetInfo(w http.ResponseWriter, r *http.Request) {
 		s.logger.Error("failed to get artist info", "artist", artist, "error", err)
 		http.Error(w, "failed to fetch artist info", http.StatusInternalServerError)
 		return
+	}
+
+	// Lowercase tag names before sending to frontend
+	for i := range info.Tags.Tag {
+		info.Tags.Tag[i].Name = strings.ToLower(info.Tags.Tag[i].Name)
 	}
 
 	response := map[string]interface{}{
