@@ -395,7 +395,7 @@ func indexHTML() string {
         let resultsExpanded = false;
         const artistInfoCache = new Map();
 
-        async function fetchWithRetry(url, maxRetries = 120, statusCallback = null) {
+        async function fetchWithRetry(url, maxRetries = 60, statusCallback = null) {
             const delay = 100;
             let lastError;
 
@@ -683,7 +683,7 @@ func indexHTML() string {
                 try {
                     const data = await fetchWithRetry(
                         './api/artist/similar?artist=' + encodeURIComponent(artist.name),
-                        120,
+                        60,
                         (retryMsg) => { status.textContent = baseStatus + ' - ' + retryMsg; }
                     );
                     results[artist.name] = data.data.artists || [];

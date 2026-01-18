@@ -5,7 +5,7 @@ import (
 	"unicode/utf8"
 )
 
-var safeInputPattern = regexp.MustCompile(`^[\p{L}\p{N}\p{Zs}\-_.'&]+$`)
+var safeInputPattern = regexp.MustCompile(`^[\p{L}\p{N}\p{Zs}\-_.'&()/!,` + "`" + `]+$`)
 
 func isValidArtistName(s string) bool {
 	return s == "" || (utf8.RuneCountInString(s) <= 256 && safeInputPattern.MatchString(s))
