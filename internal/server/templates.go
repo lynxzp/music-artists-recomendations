@@ -6,6 +6,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
 	return fmt.Sprintf(`<!DOCTYPE html>
 <html>
 <head>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>Music Recommendations</title>
     <style>
         * { box-sizing: border-box; }
@@ -270,6 +271,34 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             font-size: 18px;
             font-weight: 600;
             color: #1a202c;
+        }
+
+        @media (max-width: 768px) {
+            body {
+                flex-direction: column;
+                height: auto;
+                min-height: 100vh;
+                padding: 12px;
+                gap: 16px;
+            }
+
+            .left-panel {
+                width: 100%%;
+                max-height: none;
+            }
+
+            .right-panel {
+                width: 100%%;
+                min-height: 400px;
+            }
+
+            .period-table .period-col {
+                width: 80px;
+            }
+
+            .total-col {
+                min-width: 150px;
+            }
         }
     </style>
 </head>
