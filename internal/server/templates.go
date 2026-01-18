@@ -4,8 +4,19 @@ func indexHTML() string {
 	return `<!DOCTYPE html>
 <html>
 <head>
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Music Recommendations</title>
+    <meta name="description" content="Deep music recommendations based on your Last.fm profile. Analyzes your top artists and finds similar ones with weighted scoring.">
+    <meta property="og:title" content="Music Artist Recommendations">
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://sergua.com/music/artists-recomendations/">
+    <meta property="og:description" content="Deep music recommendations based on your Last.fm profile. Analyzes your top artists and finds similar ones with weighted scoring.">
+    <meta property="og:image" content="https://sergua.com/static/music-artists-recomendations.png">
+    <meta property="og:site_name" content="SergUA">
+    <link rel="canonical" href="https://sergua.com/music/artists-recomendations/">
+    <link rel="icon" href="/static/favicon.ico" sizes="any">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+    <title>Music Artist Recommendations - SergUA</title>
     <style>
         * { box-sizing: border-box; }
         body {
