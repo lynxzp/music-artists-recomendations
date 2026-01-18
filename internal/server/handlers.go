@@ -53,6 +53,35 @@ func (s *Server) handleArtistGetSimilar(w http.ResponseWriter, r *http.Request) 
 	json.NewEncoder(w).Encode(response)
 }
 
+func (s *Server) handleArtistGetInfo(w http.ResponseWriter, r *http.Request) {
+	artist := r.URL.Query().Get("artist")
+	mbid := r.URL.Query().Get("mbid")
+	autocorrectStr := r.URL.Query().Get("autocorrect")
+
+	if !isValidArtistName(artist) && mbid == "" {
+		http.Error(w, "invalid artist parameter", http.StatusBadRequest)
+		return
+	}
+
+	autocorrect := autocorrectStr == "true" || autocorrectStr == "1"
+
+	info, err := s.client.ArtistGetInfo(artist, mbid, autocorrect)
+	if err != nil {
+		s.logger.Error("failed to get artist info", "artist", artist, "error", err)
+		http.Error(w, "failed to fetch artist info", http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]interface{}{
+		"data": map[string]interface{}{
+			"artist": info,
+		},
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
 type appendRequest struct {
 	A      []lastfm.SimilarArtist `json:"a"`
 	B      []lastfm.SimilarArtist `json:"b"`

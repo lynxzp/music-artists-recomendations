@@ -7,7 +7,7 @@ import (
 	_ "modernc.org/sqlite"
 )
 
-const maxAge = 30 * 24 * time.Hour // 1 month
+const maxAge = 7 * 24 * time.Hour
 
 type Cache struct {
 	db *sql.DB

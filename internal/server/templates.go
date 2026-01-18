@@ -339,6 +339,8 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             color: #94a3b8;
             margin-top: 2px;
         }
+        .artist-tags { font-size: 10px; color: #64748b; margin-top: 2px; }
+        .tag { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; margin-right: 3px; white-space: nowrap; }
     </style>
 </head>
 <body>
@@ -393,6 +395,46 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         let aggregatedArtists = [];  // [{ name, weight }, ...] sorted by weight desc
         let periodExpanded = false;
         let resultsExpanded = false;
+        const artistInfoCache = new Map();
+
+        async function fetchArtistInfo(name) {
+            if (artistInfoCache.has(name)) {
+                return artistInfoCache.get(name);
+            }
+            try {
+                const resp = await fetch('./api/artist/info?artist=' + encodeURIComponent(name) + '&autocorrect=true');
+                const data = await resp.json();
+                const info = data.data.artist;
+                artistInfoCache.set(name, info);
+                return info;
+            } catch (err) {
+                console.error('Error fetching artist info', name, err);
+                return null;
+            }
+        }
+
+        function formatTags(tags, limit = 5) {
+            if (!tags || !tags.tag || tags.tag.length === 0) return '';
+            return tags.tag.slice(0, limit).map(t => '<span class="tag">' + escapeHtml(t.name) + '</span>').join('');
+        }
+
+        async function populateArtistInfo() {
+            const rows = document.querySelectorAll('#resultsTable tbody tr[data-artist]');
+            const batchSize = 10;
+            for (let i = 0; i < rows.length; i += batchSize) {
+                const batch = Array.from(rows).slice(i, i + batchSize);
+                await Promise.all(batch.map(async (row) => {
+                    const artistName = row.getAttribute('data-artist');
+                    const info = await fetchArtistInfo(artistName);
+                    if (!info) return;
+
+                    const tagsEl = row.querySelector('.artist-tags');
+                    if (tagsEl) {
+                        tagsEl.innerHTML = formatTags(info.tags);
+                    }
+                }));
+            }
+        }
 
         function togglePeriodExplain() {
             periodExpanded = !periodExpanded;
@@ -583,7 +625,9 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
                     ? '<div class="similar-to">(Similar to: ' + topMatches.map(escapeHtml).join(', ') + ')</div>'
                     : '';
 
-                html += '<tr><td>' + escapeHtml(row.artist.name) + similarTo + '</td>';
+                html += '<tr data-artist="' + escapeHtml(row.artist.name) + '"><td>' +
+                    escapeHtml(row.artist.name) + similarTo +
+                    '<div class="artist-tags"></div></td>';
                 for (const artist of artists) {
                     const match = row.matches[artist.name];
                     html += '<td class="match match-col' + hiddenClass + '">' + (match ? match.toFixed(2) : '') + '</td>';
@@ -651,6 +695,9 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             renderTable(artists, allSimilar);
             status.textContent = 'Showing top 100 of ' + allSimilar.size + ' similar artists';
             btn.disabled = false;
+
+            // Fetch and display artist info (images and tags)
+            populateArtistInfo();
         }
 
         function escapeHtml(text) {
