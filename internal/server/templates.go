@@ -300,6 +300,45 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
                 min-width: 150px;
             }
         }
+
+        .period-col.hidden, .match-col.hidden, .total-col-header.hidden { display: none; }
+        .explain-btn {
+            padding: 6px 12px;
+            font-size: 12px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            color: #64748b;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+        .explain-btn:hover {
+            background: #e2e8f0;
+            color: #475569;
+        }
+        .explain-text {
+            font-size: 12px;
+            color: #64748b;
+            background: #f8fafc;
+            padding: 8px 12px;
+            border-radius: 6px;
+            margin-top: 8px;
+            display: none;
+        }
+        .explain-text.visible { display: block; }
+        .period-table.collapsed .total-col { width: 100%%; }
+        .period-table.collapsed .artist-input { width: 200px; }
+        .results-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .results-header h3 { margin: 0; }
+        .similar-to {
+            font-size: 11px;
+            color: #94a3b8;
+            margin-top: 2px;
+        }
     </style>
 </head>
 <body>
@@ -314,25 +353,31 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         <div class="section grow">
             <label class="section-label">Your top artists by time period:</label>
             <div class="period-table-container">
-                <table class="period-table" id="periodTable">
+                <table class="period-table collapsed" id="periodTable">
                     <thead>
                         <tr>
-                            <th class="period-col">Overall</th>
-                            <th class="period-col">12 Month</th>
-                            <th class="period-col">1 Month</th>
+                            <th class="period-col hidden">Overall</th>
+                            <th class="period-col hidden">12 Month</th>
+                            <th class="period-col hidden">1 Month</th>
                             <th class="total-col">Total (editable)</th>
                         </tr>
                     </thead>
                     <tbody id="periodTableBody"></tbody>
                 </table>
                 <button class="add-row-btn" onclick="addArtistRow()">+ Add Artist</button>
+                <button class="explain-btn" id="periodExplainBtn" onclick="togglePeriodExplain()">Explain numbers</button>
+                <div class="explain-text" id="periodExplainText">Numbers show your play counts from Last.fm. Total combines plays across all time periods. Will be used as weight to find similar artists for recommendations.</div>
             </div>
         </div>
         <button id="goBtn" onclick="go()">Find Similar Artists</button>
         <div id="status"></div>
     </div>
     <div class="right-panel">
-        <h3>Recommended Artists</h3>
+        <div class="results-header">
+            <h3>Recommended Artists</h3>
+            <button class="explain-btn" id="resultsExplainBtn" onclick="toggleResultsExplain()">Explain how calculated</button>
+        </div>
+        <div class="explain-text" id="resultsExplainText">Match scores show how similar each artist is to your favorites, weighted by your play counts.</div>
         <div class="table-scroll">
             <table id="resultsTable"></table>
         </div>
@@ -346,6 +391,26 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         ];
         let periodData = {};  // { period: [{ name, playcount }, ...] }
         let aggregatedArtists = [];  // [{ name, weight }, ...] sorted by weight desc
+        let periodExpanded = false;
+        let resultsExpanded = false;
+
+        function togglePeriodExplain() {
+            periodExpanded = !periodExpanded;
+            const table = document.getElementById('periodTable');
+            table.classList.toggle('collapsed', !periodExpanded);
+            const cols = document.querySelectorAll('#periodTable .period-col');
+            cols.forEach(col => col.classList.toggle('hidden', !periodExpanded));
+            document.getElementById('periodExplainBtn').textContent = periodExpanded ? 'Hide details' : 'Explain numbers';
+            document.getElementById('periodExplainText').classList.toggle('visible', periodExpanded);
+        }
+
+        function toggleResultsExplain() {
+            resultsExpanded = !resultsExpanded;
+            const cols = document.querySelectorAll('#resultsTable .match-col');
+            cols.forEach(col => col.classList.toggle('hidden', !resultsExpanded));
+            document.getElementById('resultsExplainBtn').textContent = resultsExpanded ? 'Hide details' : 'Explain numbers';
+            document.getElementById('resultsExplainText').classList.toggle('visible', resultsExpanded);
+        }
 
         async function loadUserArtists() {
             const username = document.getElementById('username').value.trim();
@@ -415,7 +480,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
                 for (const period of PERIODS) {
                     const artists = periodData[period.key] || [];
                     const td = document.createElement('td');
-                    td.className = 'period-col';
+                    td.className = 'period-col' + (periodExpanded ? '' : ' hidden');
                     if (artists[i]) {
                         const a = artists[i];
                         const isMulti = artistPeriodCount.get(a.name.toLowerCase()) > 1;
@@ -450,7 +515,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             // Empty period columns
             for (let i = 0; i < PERIODS.length; i++) {
                 const td = document.createElement('td');
-                td.className = 'period-col';
+                td.className = 'period-col' + (periodExpanded ? '' : ' hidden');
                 tr.appendChild(td);
             }
 
@@ -498,22 +563,32 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
             const top30 = [...artists].sort((a, b) => b.weight - a.weight).slice(0, 30);
             const inputArtistNames = new Set(top30.map(a => a.name.toLowerCase()));
 
+            const hiddenClass = resultsExpanded ? '' : ' hidden';
             let html = '<thead><tr><th>Similar Artist</th>';
             for (const artist of artists) {
-                html += '<th>' + escapeHtml(artist.name) + '</th>';
+                html += '<th class="match-col' + hiddenClass + '">' + escapeHtml(artist.name) + '</th>';
             }
-            html += '<th class="total">Total</th></tr></thead><tbody>';
+            html += '<th class="total match-col' + hiddenClass + '">Total</th></tr></thead><tbody>';
 
             for (const row of sorted) {
                 // Skip artists that are in the top 30 input list
                 if (inputArtistNames.has(row.artist.name.toLowerCase())) continue;
 
-                html += '<tr><td>' + escapeHtml(row.artist.name) + '</td>';
+                // Get top 5 matching input artists
+                const topMatches = Object.entries(row.matches)
+                    .sort((a, b) => b[1] - a[1])
+                    .slice(0, 5)
+                    .map(([name]) => name);
+                const similarTo = topMatches.length > 0
+                    ? '<div class="similar-to">(Similar to: ' + topMatches.map(escapeHtml).join(', ') + ')</div>'
+                    : '';
+
+                html += '<tr><td>' + escapeHtml(row.artist.name) + similarTo + '</td>';
                 for (const artist of artists) {
                     const match = row.matches[artist.name];
-                    html += '<td class="match">' + (match ? match.toFixed(2) : '') + '</td>';
+                    html += '<td class="match match-col' + hiddenClass + '">' + (match ? match.toFixed(2) : '') + '</td>';
                 }
-                html += '<td class="match total">' + row.total.toFixed(2) + '</td></tr>';
+                html += '<td class="match total match-col' + hiddenClass + '">' + row.total.toFixed(2) + '</td></tr>';
             }
             html += '</tbody>';
 
