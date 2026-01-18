@@ -338,7 +338,9 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
                 const results = await Promise.all(promises);
                 periodData = {};
                 for (const r of results) {
-                    periodData[r.period] = r.artists.map(a => ({ name: a.name, playcount: parseInt(a.playcount, 10) || 0 }));
+                    periodData[r.period] = r.artists
+                    .map(a => ({ name: a.name, playcount: parseInt(a.playcount, 10) || 0 }))
+                    .filter(a => a.playcount >= 5);
                 }
 
                 renderPeriodTable();
@@ -461,7 +463,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
         }
 
         function renderTable(artists, allSimilar) {
-            const sorted = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total);
+            const sorted = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total).slice(0, 100);
 
             // Create set of top 30 input artist names (by weight) for filtering
             const top30 = [...artists].sort((a, b) => b.weight - a.weight).slice(0, 30);
@@ -543,7 +545,7 @@ func indexHTML(similarArtistsLimit, topArtistsLimit int) string {
 
             // Final render
             renderTable(artists, allSimilar);
-            status.textContent = 'Found ' + allSimilar.size + ' similar artists';
+            status.textContent = 'Showing top 100 of ' + allSimilar.size + ' similar artists';
             btn.disabled = false;
         }
 
