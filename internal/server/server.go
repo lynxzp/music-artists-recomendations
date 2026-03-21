@@ -22,8 +22,14 @@ type Config struct {
 	Logger              *slog.Logger
 }
 
+type MusicClient interface {
+	ArtistGetSimilar(artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error)
+	ArtistGetInfo(artist, mbid string, autocorrect bool) (*lastfm.ArtistInfo, error)
+	UserGetTopArtists(user, period string, limit, page int) ([]lastfm.TopArtist, error)
+}
+
 type Server struct {
-	client     *lastfm.Client
+	client     MusicClient
 	cache      *cache.Cache
 	config     Config
 	logger     *slog.Logger

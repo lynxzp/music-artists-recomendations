@@ -8,8 +8,6 @@ import (
 	"net/url"
 )
 
-const baseURL = "https://ws.audioscrobbler.com/2.0/"
-
 type SimilarArtist struct {
 	Name  string  `json:"name"`
 	MBID  string  `json:"mbid"`
@@ -60,7 +58,7 @@ func (c *Client) ArtistGetSimilar(artist, mbid string, limit int, autocorrect bo
 		q.Set("autocorrect", "1")
 	}
 
-	requestURL := baseURL + "?" + q.Encode()
+	requestURL := c.baseURL + "?" + q.Encode()
 
 	var body []byte
 
@@ -126,7 +124,7 @@ func (c *Client) ArtistGetInfo(artist, mbid string, autocorrect bool) (*ArtistIn
 		q.Set("autocorrect", "1")
 	}
 
-	requestURL := baseURL + "?" + q.Encode()
+	requestURL := c.baseURL + "?" + q.Encode()
 
 	var body []byte
 

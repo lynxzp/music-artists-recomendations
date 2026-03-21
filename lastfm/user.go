@@ -42,7 +42,7 @@ func (c *Client) UserGetTopArtists(user, period string, limit, page int) ([]TopA
 		q.Set("page", fmt.Sprintf("%d", page))
 	}
 
-	requestURL := baseURL + "?" + q.Encode()
+	requestURL := c.baseURL + "?" + q.Encode()
 
 	var body []byte
 

@@ -12,6 +12,7 @@ const BaseURL = "https://ws.audioscrobbler.com/2.0/"
 
 type Client struct {
 	apiKey     string
+	baseURL    string
 	cache      *cache.Cache
 	limiter    *ratelimit.Limiter
 	httpClient *http.Client
@@ -34,13 +35,13 @@ func newHTTPClient() *http.Client {
 }
 
 func NewClient(apiKey string) *Client {
-	return &Client{apiKey: apiKey, httpClient: newHTTPClient()}
+	return &Client{apiKey: apiKey, baseURL: BaseURL, httpClient: newHTTPClient()}
 }
 
 func NewClientWithCache(apiKey string, c *cache.Cache) *Client {
-	return &Client{apiKey: apiKey, cache: c, httpClient: newHTTPClient()}
+	return &Client{apiKey: apiKey, baseURL: BaseURL, cache: c, httpClient: newHTTPClient()}
 }
 
 func NewClientWithCacheAndLimiter(apiKey string, c *cache.Cache, l *ratelimit.Limiter) *Client {
-	return &Client{apiKey: apiKey, cache: c, limiter: l, httpClient: newHTTPClient()}
+	return &Client{apiKey: apiKey, baseURL: BaseURL, cache: c, limiter: l, httpClient: newHTTPClient()}
 }
