@@ -14,7 +14,7 @@ import (
 
 type mockClient struct {
 	artistGetSimilarFn  func(artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error)
-	artistGetInfoFn     func(artist, mbid string, autocorrect bool) (*lastfm.ArtistInfo, error)
+	artistGetInfoFn     func(artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error)
 	userGetTopArtistsFn func(user, period string, limit, page int) ([]lastfm.TopArtist, error)
 }
 
@@ -22,8 +22,8 @@ func (m *mockClient) ArtistGetSimilar(artist, mbid string, limit int, autocorrec
 	return m.artistGetSimilarFn(artist, mbid, limit, autocorrect)
 }
 
-func (m *mockClient) ArtistGetInfo(artist, mbid string, autocorrect bool) (*lastfm.ArtistInfo, error) {
-	return m.artistGetInfoFn(artist, mbid, autocorrect)
+func (m *mockClient) ArtistGetInfo(artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error) {
+	return m.artistGetInfoFn(artist, mbid, username, autocorrect)
 }
 
 func (m *mockClient) UserGetTopArtists(user, period string, limit, page int) ([]lastfm.TopArtist, error) {
@@ -130,7 +130,7 @@ func TestHandleArtistGetSimilar_ClientError(t *testing.T) {
 
 func TestHandleArtistGetInfo_Valid(t *testing.T) {
 	mock := &mockClient{
-		artistGetInfoFn: func(artist, mbid string, autocorrect bool) (*lastfm.ArtistInfo, error) {
+		artistGetInfoFn: func(artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error) {
 			info := &lastfm.ArtistInfo{Name: "Radiohead"}
 			info.Tags.Tag = []lastfm.ArtistTag{
 				{Name: "Alternative Rock"},
@@ -182,7 +182,7 @@ func TestHandleArtistGetInfo_InvalidArtist(t *testing.T) {
 
 func TestHandleArtistGetInfo_EmptyArtist(t *testing.T) {
 	mock := &mockClient{
-		artistGetInfoFn: func(artist, mbid string, autocorrect bool) (*lastfm.ArtistInfo, error) {
+		artistGetInfoFn: func(artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error) {
 			return nil, fmt.Errorf("either Artist or MBID must be provided")
 		},
 	}
@@ -199,7 +199,7 @@ func TestHandleArtistGetInfo_EmptyArtist(t *testing.T) {
 
 func TestHandleArtistGetInfo_ClientError(t *testing.T) {
 	mock := &mockClient{
-		artistGetInfoFn: func(artist, mbid string, autocorrect bool) (*lastfm.ArtistInfo, error) {
+		artistGetInfoFn: func(artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error) {
 			return nil, fmt.Errorf("api error")
 		},
 	}

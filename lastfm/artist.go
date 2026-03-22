@@ -21,9 +21,12 @@ type ArtistTag struct {
 }
 
 type ArtistInfo struct {
-	Name string `json:"name"`
-	MBID string `json:"mbid"`
-	URL  string `json:"url"`
+	Name  string `json:"name"`
+	MBID  string `json:"mbid"`
+	URL   string `json:"url"`
+	Stats struct {
+		UserPlaycount string `json:"userplaycount"`
+	} `json:"stats"`
 	Tags struct {
 		Tag []ArtistTag `json:"tag"`
 	} `json:"tags"`
@@ -108,7 +111,7 @@ type artistInfoResponse struct {
 	Artist ArtistInfo `json:"artist"`
 }
 
-func (c *Client) ArtistGetInfo(artist, mbid string, autocorrect bool) (*ArtistInfo, error) {
+func (c *Client) ArtistGetInfo(artist, mbid, username string, autocorrect bool) (*ArtistInfo, error) {
 	if artist == "" && mbid == "" {
 		return nil, fmt.Errorf("either Artist or MBID must be provided")
 	}
@@ -123,6 +126,9 @@ func (c *Client) ArtistGetInfo(artist, mbid string, autocorrect bool) (*ArtistIn
 	}
 	if mbid != "" {
 		q.Set("mbid", mbid)
+	}
+	if username != "" {
+		q.Set("username", username)
 	}
 	if autocorrect {
 		q.Set("autocorrect", "1")

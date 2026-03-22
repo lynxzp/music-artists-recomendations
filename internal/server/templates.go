@@ -645,13 +645,17 @@ func indexHTML() string {
         }
 
         async function fetchArtistInfo(name) {
-            if (artistInfoCache.has(name)) {
-                return artistInfoCache.get(name);
+            const user = document.getElementById('username').value.trim();
+            const cacheKey = name + '\0' + user;
+            if (artistInfoCache.has(cacheKey)) {
+                return artistInfoCache.get(cacheKey);
             }
             try {
-                const data = await fetchWithRetry('./api/artist/info?artist=' + encodeURIComponent(name));
+                let url = './api/artist/info?artist=' + encodeURIComponent(name);
+                if (user) url += '&user=' + encodeURIComponent(user);
+                const data = await fetchWithRetry(url);
                 const info = data.data.artist;
-                artistInfoCache.set(name, info);
+                artistInfoCache.set(cacheKey, info);
                 return info;
             } catch (err) {
                 console.error('Error fetching artist info', name, err);
@@ -677,6 +681,11 @@ func indexHTML() string {
                     const tagsEl = row.querySelector('.artist-tags');
                     if (tagsEl) {
                         tagsEl.innerHTML = formatTags(info.tags);
+                    }
+                    const playsCell = row.querySelector('.plays-col');
+                    if (playsCell && info.stats && info.stats.userplaycount) {
+                        const pc = parseInt(info.stats.userplaycount, 10);
+                        if (pc > 0) playsCell.textContent = pc.toLocaleString();
                     }
                 }));
             }
@@ -789,6 +798,7 @@ func indexHTML() string {
                 tr.appendChild(td);
                 tbody.appendChild(tr);
             }
+            saveState();
         }
 
         function addArtistRow() {
@@ -813,6 +823,7 @@ func indexHTML() string {
             tr.appendChild(td);
             tbody.appendChild(tr);
 
+            saveState();
             // Focus the new input
             tr.querySelector('.artist-input').focus();
         }
@@ -820,6 +831,7 @@ func indexHTML() string {
         function removeArtistRow(btn) {
             const tr = btn.closest('tr');
             tr.remove();
+            saveState();
         }
 
         function getEditedArtists() {
@@ -856,7 +868,7 @@ func indexHTML() string {
                     }
                 }
             }
-            const showPlays = username && playcountMap.size > 0;
+            const showPlays = !!username;
 
             // Hidden artists set
             const hiddenSet = new Set(getHiddenArtists());
@@ -1003,6 +1015,49 @@ func indexHTML() string {
             div.textContent = text;
             return div.innerHTML;
         }
+
+        function saveState() {
+            const username = document.getElementById('username').value.trim();
+            localStorage.setItem('savedUsername', username);
+            localStorage.setItem('savedArtists', JSON.stringify(getEditedArtists()));
+        }
+
+        function restoreState() {
+            const username = localStorage.getItem('savedUsername');
+            if (username) {
+                document.getElementById('username').value = username;
+            }
+            try {
+                const artists = JSON.parse(localStorage.getItem('savedArtists') || '[]');
+                if (artists.length === 0) return;
+                const tbody = document.getElementById('periodTableBody');
+                for (const a of artists) {
+                    const tr = document.createElement('tr');
+                    for (let i = 0; i < PERIODS.length; i++) {
+                        const td = document.createElement('td');
+                        td.className = 'period-col' + (periodExpanded ? '' : ' hidden');
+                        tr.appendChild(td);
+                    }
+                    const td = document.createElement('td');
+                    td.className = 'total-col';
+                    td.innerHTML = '<div class="editable-artist">' +
+                        '<input type="text" class="artist-input" value="' + escapeHtml(a.name) + '">' +
+                        '<input type="number" class="weight-input" value="' + a.weight + '">' +
+                        '<button class="remove-btn" onclick="removeArtistRow(this)">\u00d7</button>' +
+                        '</div>';
+                    tr.appendChild(td);
+                    tbody.appendChild(tr);
+                }
+            } catch { /* ignore parse errors */ }
+        }
+
+        document.getElementById('periodTableBody').addEventListener('input', function(e) {
+            if (e.target.classList.contains('artist-input') || e.target.classList.contains('weight-input')) {
+                saveState();
+            }
+        });
+        document.getElementById('username').addEventListener('input', saveState);
+        restoreState();
     </script>
 </body>
 </html>`

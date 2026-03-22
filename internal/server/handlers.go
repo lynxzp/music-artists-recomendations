@@ -40,13 +40,18 @@ func (s *Server) handleArtistGetSimilar(w http.ResponseWriter, r *http.Request) 
 
 func (s *Server) handleArtistGetInfo(w http.ResponseWriter, r *http.Request) {
 	artist := r.URL.Query().Get("artist")
+	user := r.URL.Query().Get("user")
 
 	if !isValidArtistName(artist) {
 		http.Error(w, "invalid artist parameter", http.StatusBadRequest)
 		return
 	}
+	if user != "" && !isValidUsername(user) {
+		http.Error(w, "invalid user parameter", http.StatusBadRequest)
+		return
+	}
 
-	info, err := s.client.ArtistGetInfo(artist, "", true)
+	info, err := s.client.ArtistGetInfo(artist, "", user, true)
 	if err != nil {
 		s.logger.Error("failed to get artist info", "artist", artist, "error", err)
 		http.Error(w, "failed to fetch artist info", http.StatusInternalServerError)
