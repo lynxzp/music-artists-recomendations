@@ -311,6 +311,11 @@ func indexHTML() string {
         }
 
         .period-col.hidden, .match-col.hidden, .total-col-header.hidden { display: none; }
+        .match-breakdown {
+            font-size: 11px;
+            line-height: 1.4;
+            white-space: nowrap;
+        }
         .explain-btn {
             padding: 6px 12px;
             font-size: 12px;
@@ -864,10 +869,11 @@ func indexHTML() string {
             const hiddenClass = resultsExpanded ? '' : ' hidden';
             let html = '<thead><tr><th>Similar Artist</th>';
             if (showPlays) html += '<th class="plays-col">Plays</th>';
+            html += '<th class="total">Total Similarity</th>';
             for (const artist of artists) {
                 html += '<th class="match-col' + hiddenClass + '">' + escapeHtml(artist.name) + '</th>';
             }
-            html += '<th class="total">Total Similarity</th></tr></thead><tbody>';
+            html += '</tr></thead><tbody>';
 
             for (const row of sorted) {
                 // Skip artists that are in the top 30 input list
@@ -897,11 +903,20 @@ func indexHTML() string {
                     html += '<td class="plays-col">' + (pc != null ? pc.toLocaleString() : '\u2014') + '</td>';
                 }
 
+                html += '<td class="match total">' + row.total.toFixed(2) + '</td>';
                 for (const artist of artists) {
                     const match = row.matches[artist.name];
-                    html += '<td class="match match-col' + hiddenClass + '">' + (match ? match.toFixed(2) : '') + '</td>';
+                    if (match) {
+                        const raw = row.rawMatches[artist.name] || 0;
+                        const pct = parseFloat((raw * 100).toPrecision(3));
+                        html += '<td class="match match-col' + hiddenClass + '"><div class="match-breakdown">'
+                            + artist.weight + '<br>× ' + pct + '%<br>= ' + match.toFixed(2)
+                            + '</div></td>';
+                    } else {
+                        html += '<td class="match match-col' + hiddenClass + '"></td>';
+                    }
                 }
-                html += '<td class="match total">' + row.total.toFixed(2) + '</td></tr>';
+                html += '</tr>';
             }
             html += '</tbody>';
 
@@ -955,7 +970,7 @@ func indexHTML() string {
                         const entry = allSimilar.get(similar.name);
                         const weightedMatch = similar.match * artist.weight;
                         entry.matches[artist.name] = weightedMatch;
-                        entry.rawMatches[artist.name] = similar.match;
+                        entry.rawMatches[artist.name] = parseFloat(similar.match) || 0;
                         entry.total += weightedMatch;
                     }
 
