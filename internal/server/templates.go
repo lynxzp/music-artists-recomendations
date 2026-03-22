@@ -832,7 +832,7 @@ func indexHTML() string {
             for (const artist of artists) {
                 html += '<th class="match-col' + hiddenClass + '">' + escapeHtml(artist.name) + '</th>';
             }
-            html += '<th class="total match-col' + hiddenClass + '">Total</th></tr></thead><tbody>';
+            html += '<th class="total">Total Similarity</th></tr></thead><tbody>';
 
             for (const row of sorted) {
                 // Skip artists that are in the top 30 input list
@@ -841,13 +841,13 @@ func indexHTML() string {
                 const isHidden = hiddenSet.has(row.artist.name.toLowerCase());
                 const rowStyle = isHidden ? ' style="display:none"' : '';
 
-                // Get top 5 matching input artists
+                // Get top 5 matching input artists with similarity percentages
                 const topMatches = Object.entries(row.matches)
                     .sort((a, b) => b[1] - a[1])
                     .slice(0, 5)
-                    .map(([name]) => name);
+                    .filter(([, val]) => val > 0);
                 const similarTo = topMatches.length > 0
-                    ? '<div class="similar-to">(Similar to: ' + topMatches.map(escapeHtml).join(', ') + ')</div>'
+                    ? '<div class="similar-to">(Similar to: ' + topMatches.map(([name]) => escapeHtml(name) + ' ' + Math.round((row.rawMatches[name] || 0) * 100) + '%').join(', ') + ')</div>'
                     : '';
 
                 html += '<tr data-artist="' + escapeHtml(row.artist.name) + '"' + rowStyle + '><td>' +
@@ -865,7 +865,7 @@ func indexHTML() string {
                     const match = row.matches[artist.name];
                     html += '<td class="match match-col' + hiddenClass + '">' + (match ? match.toFixed(2) : '') + '</td>';
                 }
-                html += '<td class="match total match-col' + hiddenClass + '">' + row.total.toFixed(2) + '</td></tr>';
+                html += '<td class="match total">' + row.total.toFixed(2) + '</td></tr>';
             }
             html += '</tbody>';
 
@@ -911,12 +911,14 @@ func indexHTML() string {
                             allSimilar.set(similar.name, {
                                 artist: similar,
                                 matches: {},
+                                rawMatches: {},
                                 total: 0
                             });
                         }
                         const entry = allSimilar.get(similar.name);
                         const weightedMatch = similar.match * artist.weight;
                         entry.matches[artist.name] = weightedMatch;
+                        entry.rawMatches[artist.name] = similar.match;
                         entry.total += weightedMatch;
                     }
 
