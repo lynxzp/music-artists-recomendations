@@ -439,7 +439,11 @@ func indexHTML() string {
             border-bottom: 1px solid #f1f5f9;
         }
         .modal-item:last-child { border-bottom: none; }
+        .modal-item .plays-count { font-size: 11px; color: #888; margin-left: auto; margin-right: 8px; }
         .modal-section-label { font-size: 12px; color: #888; margin: 8px 0 4px; padding: 0 4px; }
+        .modal-col-header { display: flex; align-items: center; padding: 2px 0; font-size: 10px; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+        .modal-col-header .plays-count { margin-left: auto; margin-right: 8px; }
+        .modal-col-header span:last-child { width: 52px; }
         .unhide-btn {
             padding: 3px 8px;
             font-size: 11px;
@@ -588,12 +592,22 @@ func indexHTML() string {
                 closeHiddenModal();
                 return;
             }
+            const playcountMap = new Map();
+            for (const a of getEditedArtists()) {
+                playcountMap.set(a.name.toLowerCase(), a.weight);
+            }
+            function playsSpan(name) {
+                const pc = playcountMap.get(name.toLowerCase()) || 0;
+                return pc > 0 ? '<span class="plays-count">' + pc.toLocaleString() + '</span>' : '';
+            }
             const list = document.getElementById('hiddenList');
+            const colHeader = '<div class="modal-col-header"><span>Artist</span><span class="plays-count">Plays</span><span></span></div>';
             let html = '';
             if (autoHiddenArtists.length > 0) {
                 html += '<div class="modal-section-label">Your top artists (auto-hidden)</div>';
+                html += colHeader;
                 html += autoHiddenArtists.map(name =>
-                    '<div class="modal-item"><span>' + escapeHtml(name) + '</span>' +
+                    '<div class="modal-item"><span>' + escapeHtml(name) + '</span>' + playsSpan(name) +
                     '<button class="unhide-btn" onclick="unhideAutoArtist(\'' + escapeHtml(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">Unhide</button></div>'
                 ).join('');
             }
@@ -601,8 +615,9 @@ func indexHTML() string {
                 if (autoHiddenArtists.length > 0) {
                     html += '<div class="modal-section-label">Manually hidden</div>';
                 }
+                html += colHeader;
                 html += hidden.map(name =>
-                    '<div class="modal-item"><span>' + escapeHtml(name) + '</span>' +
+                    '<div class="modal-item"><span>' + escapeHtml(name) + '</span>' + playsSpan(name) +
                     '<button class="unhide-btn" onclick="unhideArtist(\'' + escapeHtml(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\');showHiddenModal()">Unhide</button></div>'
                 ).join('');
             }
