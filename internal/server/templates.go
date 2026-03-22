@@ -350,6 +350,100 @@ func indexHTML() string {
         }
         .artist-tags { font-size: 10px; color: #64748b; margin-top: 2px; }
         .tag { background: #f1f5f9; padding: 1px 5px; border-radius: 3px; margin-right: 3px; white-space: nowrap; }
+        .hide-btn {
+            padding: 1px 5px;
+            font-size: 10px;
+            background: #f1f5f9;
+            border: 1px solid #e2e8f0;
+            border-radius: 3px;
+            color: #94a3b8;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .hide-btn:hover {
+            background: #e2e8f0;
+            color: #64748b;
+        }
+        .artist-name-row {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .artist-name-row .artist-name-text {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .plays-col {
+            text-align: right;
+            font-variant-numeric: tabular-nums;
+            color: #64748b;
+            font-size: 12px;
+            white-space: nowrap;
+        }
+        .results-header-buttons {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        .modal-backdrop {
+            position: fixed;
+            inset: 0;
+            background: rgba(0,0,0,0.4);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .modal {
+            background: #fff;
+            border-radius: 12px;
+            box-shadow: 0 8px 30px rgba(0,0,0,0.2);
+            padding: 24px;
+            min-width: 300px;
+            max-width: 500px;
+            max-height: 60vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        .modal-header h4 { margin: 0; font-size: 16px; }
+        .modal-close {
+            background: none;
+            border: none;
+            font-size: 20px;
+            cursor: pointer;
+            color: #64748b;
+            padding: 0 4px;
+        }
+        .modal-close:hover { color: #1a202c; }
+        .modal-list {
+            overflow-y: auto;
+            flex: 1;
+        }
+        .modal-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 8px 0;
+            border-bottom: 1px solid #f1f5f9;
+        }
+        .modal-item:last-child { border-bottom: none; }
+        .unhide-btn {
+            padding: 3px 8px;
+            font-size: 11px;
+            background: #f0fdf4;
+            border: 1px solid #86efac;
+            border-radius: 4px;
+            color: #16a34a;
+            cursor: pointer;
+        }
+        .unhide-btn:hover { background: #dcfce7; }
     </style>
 </head>
 <body>
@@ -386,11 +480,24 @@ func indexHTML() string {
     <div class="right-panel">
         <div class="results-header">
             <h3>Recommended Artists</h3>
-            <button class="explain-btn" id="resultsExplainBtn" onclick="toggleResultsExplain()">Explain how calculated</button>
+            <div class="results-header-buttons">
+                <button class="explain-btn" id="hiddenBtn" style="display:none" onclick="showHiddenModal()">Show hidden (0)</button>
+                <button class="explain-btn" id="resultsExplainBtn" onclick="toggleResultsExplain()">Explain how calculated</button>
+            </div>
         </div>
         <div class="explain-text" id="resultsExplainText">Match scores show how similar each artist is to your favorites, weighted by your play counts.</div>
         <div class="table-scroll">
             <table id="resultsTable"></table>
+        </div>
+    </div>
+
+    <div class="modal-backdrop" id="hiddenModal" style="display:none" onclick="closeHiddenModal(event)">
+        <div class="modal" onclick="event.stopPropagation()">
+            <div class="modal-header">
+                <h4>Hidden Artists</h4>
+                <button class="modal-close" onclick="closeHiddenModal()">&times;</button>
+            </div>
+            <div class="modal-list" id="hiddenList"></div>
         </div>
     </div>
 
@@ -405,6 +512,75 @@ func indexHTML() string {
         let periodExpanded = false;
         let resultsExpanded = false;
         const artistInfoCache = new Map();
+
+        function getHiddenKey() {
+            const user = document.getElementById('username').value.trim().toLowerCase();
+            return 'hiddenArtists_' + user;
+        }
+
+        function getHiddenArtists() {
+            try {
+                return JSON.parse(localStorage.getItem(getHiddenKey()) || '[]');
+            } catch { return []; }
+        }
+
+        function setHiddenArtists(list) {
+            localStorage.setItem(getHiddenKey(), JSON.stringify(list));
+        }
+
+        function hideArtist(name) {
+            const hidden = getHiddenArtists();
+            const key = name.toLowerCase();
+            if (!hidden.includes(key)) {
+                hidden.push(key);
+                setHiddenArtists(hidden);
+            }
+            const row = document.querySelector('#resultsTable tr[data-artist="' + CSS.escape(name) + '"]');
+            if (row) row.style.display = 'none';
+            updateHiddenCount();
+        }
+
+        function unhideArtist(name) {
+            const hidden = getHiddenArtists().filter(n => n !== name.toLowerCase());
+            setHiddenArtists(hidden);
+            const rows = document.querySelectorAll('#resultsTable tr[data-artist]');
+            for (const row of rows) {
+                if (row.getAttribute('data-artist').toLowerCase() === name.toLowerCase()) {
+                    row.style.display = '';
+                }
+            }
+            updateHiddenCount();
+        }
+
+        function updateHiddenCount() {
+            const hidden = getHiddenArtists();
+            const btn = document.getElementById('hiddenBtn');
+            btn.textContent = 'Show hidden (' + hidden.length + ')';
+            btn.style.display = hidden.length > 0 ? '' : 'none';
+        }
+
+        function showHiddenModal() {
+            const hidden = getHiddenArtists();
+            if (hidden.length === 0) {
+                closeHiddenModal();
+                return;
+            }
+            const list = document.getElementById('hiddenList');
+            list.innerHTML = hidden.map(name =>
+                '<div class="modal-item"><span>' + escapeHtml(name) + '</span>' +
+                '<button class="unhide-btn" onclick="unhideArtist(\'' + escapeHtml(name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\');showHiddenModal()">Unhide</button></div>'
+            ).join('');
+            document.getElementById('hiddenModal').style.display = '';
+        }
+
+        function closeHiddenModal(event) {
+            if (event && event.target !== event.currentTarget) return;
+            document.getElementById('hiddenModal').style.display = 'none';
+        }
+
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') closeHiddenModal();
+        });
 
         async function fetchWithRetry(url, maxRetries = 60, statusCallback = null) {
             const delay = 100;
@@ -629,12 +805,30 @@ func indexHTML() string {
         function renderTable(artists, allSimilar) {
             const sorted = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total).slice(0, 100);
 
+            // Build playcount map from periodData
+            const username = document.getElementById('username').value.trim();
+            const playcountMap = new Map();
+            if (username) {
+                for (const period of PERIODS) {
+                    const pArtists = periodData[period.key] || [];
+                    for (const a of pArtists) {
+                        const key = a.name.toLowerCase();
+                        playcountMap.set(key, (playcountMap.get(key) || 0) + a.playcount);
+                    }
+                }
+            }
+            const showPlays = username && playcountMap.size > 0;
+
+            // Hidden artists set
+            const hiddenSet = new Set(getHiddenArtists());
+
             // Create set of top 30 input artist names (by weight) for filtering
             const top30 = [...artists].sort((a, b) => b.weight - a.weight).slice(0, 30);
             const inputArtistNames = new Set(top30.map(a => a.name.toLowerCase()));
 
             const hiddenClass = resultsExpanded ? '' : ' hidden';
             let html = '<thead><tr><th>Similar Artist</th>';
+            if (showPlays) html += '<th class="plays-col">Plays</th>';
             for (const artist of artists) {
                 html += '<th class="match-col' + hiddenClass + '">' + escapeHtml(artist.name) + '</th>';
             }
@@ -643,6 +837,9 @@ func indexHTML() string {
             for (const row of sorted) {
                 // Skip artists that are in the top 30 input list
                 if (inputArtistNames.has(row.artist.name.toLowerCase())) continue;
+
+                const isHidden = hiddenSet.has(row.artist.name.toLowerCase());
+                const rowStyle = isHidden ? ' style="display:none"' : '';
 
                 // Get top 5 matching input artists
                 const topMatches = Object.entries(row.matches)
@@ -653,9 +850,17 @@ func indexHTML() string {
                     ? '<div class="similar-to">(Similar to: ' + topMatches.map(escapeHtml).join(', ') + ')</div>'
                     : '';
 
-                html += '<tr data-artist="' + escapeHtml(row.artist.name) + '"><td>' +
-                    escapeHtml(row.artist.name) + similarTo +
+                html += '<tr data-artist="' + escapeHtml(row.artist.name) + '"' + rowStyle + '><td>' +
+                    '<div class="artist-name-row"><span class="artist-name-text">' + escapeHtml(row.artist.name) + '</span>' +
+                    '<button class="hide-btn" onclick="hideArtist(\'' + escapeHtml(row.artist.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">hide</button></div>' +
+                    similarTo +
                     '<div class="artist-tags"></div></td>';
+
+                if (showPlays) {
+                    const pc = playcountMap.get(row.artist.name.toLowerCase());
+                    html += '<td class="plays-col">' + (pc != null ? pc.toLocaleString() : '\u2014') + '</td>';
+                }
+
                 for (const artist of artists) {
                     const match = row.matches[artist.name];
                     html += '<td class="match match-col' + hiddenClass + '">' + (match ? match.toFixed(2) : '') + '</td>';
@@ -665,6 +870,7 @@ func indexHTML() string {
             html += '</tbody>';
 
             document.getElementById('resultsTable').innerHTML = html;
+            updateHiddenCount();
         }
 
         async function go() {
