@@ -476,7 +476,7 @@ func indexHTML() string {
                     <tbody id="periodTableBody"></tbody>
                 </table>
                 <button class="add-row-btn" onclick="addArtistRow()">+ Add Artist</button>
-                <button class="explain-btn" id="periodExplainBtn" onclick="togglePeriodExplain()">Explain numbers</button>
+                <button class="explain-btn" id="periodExplainBtn" onclick="togglePeriodExplain()">Show calculation details</button>
                 <div class="explain-text" id="periodExplainText">Numbers show your play counts from Last.fm. Total combines plays across all time periods. Will be used as weight to find similar artists for recommendations.</div>
             </div>
         </div>
@@ -488,7 +488,7 @@ func indexHTML() string {
             <h3>Recommended Artists</h3>
             <div class="results-header-buttons">
                 <button class="explain-btn" id="hiddenBtn" style="display:none" onclick="showHiddenModal()">Show hidden (0)</button>
-                <button class="explain-btn" id="resultsExplainBtn" onclick="toggleResultsExplain()">Explain how calculated</button>
+                <button class="explain-btn" id="resultsExplainBtn" onclick="toggleResultsExplain()">Show calculation details</button>
             </div>
         </div>
         <div class="explain-text" id="resultsExplainText">Match scores show how similar each artist is to your favorites, weighted by your play counts.</div>
@@ -697,7 +697,7 @@ func indexHTML() string {
             table.classList.toggle('collapsed', !periodExpanded);
             const cols = document.querySelectorAll('#periodTable .period-col');
             cols.forEach(col => col.classList.toggle('hidden', !periodExpanded));
-            document.getElementById('periodExplainBtn').textContent = periodExpanded ? 'Hide details' : 'Explain numbers';
+            document.getElementById('periodExplainBtn').textContent = periodExpanded ? 'Hide details' : 'Show calculation details';
             document.getElementById('periodExplainText').classList.toggle('visible', periodExpanded);
         }
 
@@ -705,7 +705,7 @@ func indexHTML() string {
             resultsExpanded = !resultsExpanded;
             const cols = document.querySelectorAll('#resultsTable .match-col');
             cols.forEach(col => col.classList.toggle('hidden', !resultsExpanded));
-            document.getElementById('resultsExplainBtn').textContent = resultsExpanded ? 'Hide details' : 'Explain numbers';
+            document.getElementById('resultsExplainBtn').textContent = resultsExpanded ? 'Hide details' : 'Show calculation details';
             document.getElementById('resultsExplainText').classList.toggle('visible', resultsExpanded);
         }
 
