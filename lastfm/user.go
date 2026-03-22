@@ -71,14 +71,18 @@ func (c *Client) UserGetTopArtists(user, period string, limit, page int) ([]TopA
 			return nil, fmt.Errorf("failed to read response: %w", err)
 		}
 
-		if c.cache != nil {
+		if c.cache != nil && len(body) > 0 {
 			c.cache.Set(requestURL, string(body))
 		}
 	}
 
+	if len(body) == 0 {
+		return nil, fmt.Errorf("empty response from API")
+	}
+
 	var result topArtistsResponse
 	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("failed to decode response: %w", err)
+		return nil, fmt.Errorf("failed to decode response: %w, '%s'", err, string(body))
 	}
 
 	return result.TopArtists.Artist, nil

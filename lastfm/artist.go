@@ -87,9 +87,13 @@ func (c *Client) ArtistGetSimilar(artist, mbid string, limit int, autocorrect bo
 			return nil, fmt.Errorf("failed to read response: %w", err)
 		}
 
-		if c.cache != nil {
+		if c.cache != nil && len(body) > 0 {
 			c.cache.Set(requestURL, string(body))
 		}
+	}
+
+	if len(body) == 0 {
+		return nil, fmt.Errorf("empty response from API")
 	}
 
 	var result similarArtistsResponse
@@ -153,9 +157,13 @@ func (c *Client) ArtistGetInfo(artist, mbid string, autocorrect bool) (*ArtistIn
 			return nil, fmt.Errorf("failed to read response: %w", err)
 		}
 
-		if c.cache != nil {
+		if c.cache != nil && len(body) > 0 {
 			c.cache.Set(requestURL, string(body))
 		}
+	}
+
+	if len(body) == 0 {
+		return nil, fmt.Errorf("empty response from API")
 	}
 
 	var result artistInfoResponse
