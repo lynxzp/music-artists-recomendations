@@ -938,7 +938,7 @@ func indexHTML() string {
                         const raw = row.rawMatches[artist.name] || 0;
                         const pct = parseFloat((raw * 100).toPrecision(3));
                         html += '<td class="match match-col' + hiddenClass + '"><div class="match-breakdown">'
-                            + 'ln(' + artist.weight + ')<br>× ' + pct + '%<br>= ' + match.toFixed(2)
+                            + artist.weight + '^0.8<br>× ' + pct + '%<br>= ' + match.toFixed(2)
                             + '</div></td>';
                     } else {
                         html += '<td class="match match-col' + hiddenClass + '"></td>';
@@ -996,7 +996,7 @@ func indexHTML() string {
                             });
                         }
                         const entry = allSimilar.get(similar.name);
-                        const weightedMatch = similar.match * Math.log(Math.max(1, artist.weight));
+                        const weightedMatch = similar.match * Math.pow(artist.weight, 0.8);
                         entry.matches[artist.name] = weightedMatch;
                         entry.rawMatches[artist.name] = parseFloat(similar.match) || 0;
                         entry.total += weightedMatch;
