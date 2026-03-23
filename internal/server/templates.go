@@ -869,7 +869,7 @@ func indexHTML() string {
         function renderTable(artists, allSimilar) {
             lastRenderArtists = artists;
             lastRenderAllSimilar = allSimilar;
-            const sorted = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total).slice(0, 100);
+            const sorted = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total).slice(0, 150);
 
             // Build playcount map from periodData
             const username = document.getElementById('username').value.trim();
