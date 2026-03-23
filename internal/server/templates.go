@@ -517,6 +517,7 @@ func indexHTML() string {
             { key: '12month', label: '12 Month' },
             { key: '1month', label: '1 Month' }
         ];
+        const DISPLAY_LIMIT = 150;
         let periodData = {};  // { period: [{ name, playcount }, ...] }
         let aggregatedArtists = [];  // [{ name, weight }, ...] sorted by weight desc
         let periodExpanded = false;
@@ -869,7 +870,7 @@ func indexHTML() string {
         function renderTable(artists, allSimilar) {
             lastRenderArtists = artists;
             lastRenderAllSimilar = allSimilar;
-            const sorted = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total).slice(0, 150);
+            const sorted = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total).slice(0, DISPLAY_LIMIT);
 
             // Build playcount map from periodData
             const username = document.getElementById('username').value.trim();
@@ -1017,7 +1018,7 @@ func indexHTML() string {
             if (failedArtists.length > 0) {
                 status.textContent = 'Done. Failed to load: ' + failedArtists.join(', ');
             } else {
-                status.textContent = 'Showing top 100 of ' + allSimilar.size + ' similar artists';
+                status.textContent = 'Showing top ' + DISPLAY_LIMIT + ' of ' + allSimilar.size + ' similar artists';
             }
             btn.disabled = false;
 

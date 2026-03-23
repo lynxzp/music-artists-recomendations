@@ -17,8 +17,8 @@ func Run() error {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 
 	c := Config{
-		SimilarArtistsLimit: 300,
-		TopArtistsLimit:     300,
+		SimilarArtistsLimit: 500,
+		TopArtistsLimit:     500,
 		CachePath:           os.Getenv("CACHE_PATH"),
 		APIKey:              os.Getenv("API_KEY"),
 	}
