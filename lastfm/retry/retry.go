@@ -26,7 +26,7 @@ type RetryTransport struct {
 	Delays []time.Duration
 }
 
-// RoundTrip executes the HTTP request with retry logic for 4xx and 5xx status codes.
+// RoundTrip executes the HTTP request with retry logic for 429 and 5xx status codes.
 func (t *RetryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	base := t.Base
 	if base == nil {
@@ -53,7 +53,11 @@ func (t *RetryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 			resp.Body.Close()
 		}
 
-		time.Sleep(delay)
+		select {
+		case <-time.After(delay):
+		case <-req.Context().Done():
+			return resp, req.Context().Err()
+		}
 
 		// Clone request for retry (Last.fm API uses GET only, no body to handle)
 		retryReq, cloneErr := http.NewRequestWithContext(req.Context(), req.Method, req.URL.String(), nil)
@@ -71,7 +75,7 @@ func (t *RetryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return resp, err
 }
 
-// isRetryable returns true for status codes that should trigger a retry (4xx and 5xx).
+// isRetryable returns true for status codes that should trigger a retry (429 and 5xx).
 func isRetryable(statusCode int) bool {
-	return statusCode >= 400 && statusCode <= 599
+	return statusCode == 429 || (statusCode >= 500 && statusCode <= 599)
 }
