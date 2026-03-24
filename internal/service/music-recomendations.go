@@ -15,6 +15,7 @@ type Config struct {
 
 func Run() error {
 	logger := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	slog.SetDefault(logger)
 
 	c := Config{
 		SimilarArtistsLimit: 500,
@@ -34,7 +35,11 @@ func Run() error {
 		logger.Error("failed to create server", "error", err)
 		return err
 	}
-	defer srv.Close()
+	defer func() {
+		if err := srv.Close(); err != nil {
+			logger.Error("failed to close server", "error", err)
+		}
+	}()
 
 	return srv.Start()
 }

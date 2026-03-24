@@ -2,6 +2,8 @@ package cache
 
 import (
 	"database/sql"
+	"errors"
+	"log/slog"
 	"time"
 
 	_ "modernc.org/sqlite"
@@ -53,12 +55,17 @@ func (c *Cache) Get(request string) (string, bool) {
 	).Scan(&response, &timestamp)
 
 	if err != nil {
+		if !errors.Is(err, sql.ErrNoRows) {
+			slog.Warn("failed to query cache", "request", request, "error", err)
+		}
 		return "", false
 	}
 
 	entryTime := time.Unix(timestamp, 0)
 	if time.Since(entryTime) > maxAge {
-		c.db.Exec("DELETE FROM cache WHERE request = ?", request)
+		if _, err := c.db.Exec("DELETE FROM cache WHERE request = ?", request); err != nil {
+			slog.Warn("failed to delete expired cache entry", "request", request, "error", err)
+		}
 		return "", false
 	}
 
@@ -66,15 +73,19 @@ func (c *Cache) Get(request string) (string, bool) {
 }
 
 func (c *Cache) Set(request, response string) {
-	c.db.Exec(`
+	if _, err := c.db.Exec(`
 		INSERT OR REPLACE INTO cache (request, response, timestamp)
 		VALUES (?, ?, ?)
-	`, request, response, time.Now().Unix())
+	`, request, response, time.Now().Unix()); err != nil {
+		slog.Warn("failed to set cache entry", "request", request, "error", err)
+	}
 }
 
 func (c *Cache) cleanup() {
 	cutoff := time.Now().Add(-maxAge).Unix()
-	c.db.Exec("DELETE FROM cache WHERE timestamp < ?", cutoff)
+	if _, err := c.db.Exec("DELETE FROM cache WHERE timestamp < ?", cutoff); err != nil {
+		slog.Warn("failed to cleanup expired cache entries", "cutoff", cutoff, "error", err)
+	}
 }
 
 func (c *Cache) Close() error {

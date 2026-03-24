@@ -10,7 +10,9 @@ import (
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "text/html")
 	html := indexHTML()
-	w.Write([]byte(html))
+	if _, err := w.Write([]byte(html)); err != nil {
+		s.logger.Error("failed to write index response", "error", err)
+	}
 }
 
 func (s *Server) handleArtistGetSimilar(w http.ResponseWriter, r *http.Request) {
@@ -35,7 +37,9 @@ func (s *Server) handleArtistGetSimilar(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		s.logger.Error("failed to encode similar artists response", "artist", artist, "error", err)
+	}
 }
 
 func (s *Server) handleArtistGetInfo(w http.ResponseWriter, r *http.Request) {
@@ -70,7 +74,9 @@ func (s *Server) handleArtistGetInfo(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		s.logger.Error("failed to encode artist info response", "artist", artist, "error", err)
+	}
 }
 
 type appendRequest struct {
@@ -95,7 +101,9 @@ func (s *Server) handleAppendSimilarArtists(w http.ResponseWriter, r *http.Reque
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		s.logger.Error("failed to encode append response", "error", err)
+	}
 }
 
 func (s *Server) handleUserGetTopArtists(w http.ResponseWriter, r *http.Request) {
@@ -125,5 +133,7 @@ func (s *Server) handleUserGetTopArtists(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		s.logger.Error("failed to encode top artists response", "user", user, "period", period, "error", err)
+	}
 }
