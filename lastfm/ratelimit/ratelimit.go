@@ -1,6 +1,7 @@
 package ratelimit
 
 import (
+	"context"
 	"sync"
 	"time"
 )
@@ -18,7 +19,7 @@ func New(interval time.Duration) *Limiter {
 	}
 }
 
-func (l *Limiter) Wait() {
+func (l *Limiter) Wait(ctx context.Context) error {
 	l.mu.Lock()
 	sleepDuration := l.interval - time.Since(l.lastReq)
 	if sleepDuration < 0 {
@@ -27,7 +28,17 @@ func (l *Limiter) Wait() {
 	l.lastReq = time.Now().Add(sleepDuration)
 	l.mu.Unlock()
 
-	if sleepDuration > 0 {
-		time.Sleep(sleepDuration)
+	if sleepDuration <= 0 {
+		return nil
+	}
+
+	timer := time.NewTimer(sleepDuration)
+	defer timer.Stop()
+
+	select {
+	case <-timer.C:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
 	}
 }

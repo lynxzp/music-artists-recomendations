@@ -1,6 +1,7 @@
 package server
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -13,21 +14,21 @@ import (
 )
 
 type mockClient struct {
-	artistGetSimilarFn  func(artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error)
-	artistGetInfoFn     func(artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error)
-	userGetTopArtistsFn func(user, period string, limit, page int) ([]lastfm.TopArtist, error)
+	artistGetSimilarFn  func(ctx context.Context, artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error)
+	artistGetInfoFn     func(ctx context.Context, artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error)
+	userGetTopArtistsFn func(ctx context.Context, user, period string, limit, page int) ([]lastfm.TopArtist, error)
 }
 
-func (m *mockClient) ArtistGetSimilar(artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error) {
-	return m.artistGetSimilarFn(artist, mbid, limit, autocorrect)
+func (m *mockClient) ArtistGetSimilar(ctx context.Context, artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error) {
+	return m.artistGetSimilarFn(ctx, artist, mbid, limit, autocorrect)
 }
 
-func (m *mockClient) ArtistGetInfo(artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error) {
-	return m.artistGetInfoFn(artist, mbid, username, autocorrect)
+func (m *mockClient) ArtistGetInfo(ctx context.Context, artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error) {
+	return m.artistGetInfoFn(ctx, artist, mbid, username, autocorrect)
 }
 
-func (m *mockClient) UserGetTopArtists(user, period string, limit, page int) ([]lastfm.TopArtist, error) {
-	return m.userGetTopArtistsFn(user, period, limit, page)
+func (m *mockClient) UserGetTopArtists(ctx context.Context, user, period string, limit, page int) ([]lastfm.TopArtist, error) {
+	return m.userGetTopArtistsFn(ctx, user, period, limit, page)
 }
 
 func newTestServer(client MusicClient) *Server {
@@ -55,7 +56,7 @@ func TestHandleIndex(t *testing.T) {
 
 func TestHandleArtistGetSimilar_Valid(t *testing.T) {
 	mock := &mockClient{
-		artistGetSimilarFn: func(artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error) {
+		artistGetSimilarFn: func(ctx context.Context, artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error) {
 			return []lastfm.SimilarArtist{
 				{Name: "Artist1", Match: 0.9},
 			}, nil
@@ -96,7 +97,7 @@ func TestHandleArtistGetSimilar_InvalidArtist(t *testing.T) {
 
 func TestHandleArtistGetSimilar_EmptyArtist(t *testing.T) {
 	mock := &mockClient{
-		artistGetSimilarFn: func(artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error) {
+		artistGetSimilarFn: func(ctx context.Context, artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error) {
 			return nil, fmt.Errorf("either Artist or MBID must be provided")
 		},
 	}
@@ -113,7 +114,7 @@ func TestHandleArtistGetSimilar_EmptyArtist(t *testing.T) {
 
 func TestHandleArtistGetSimilar_ClientError(t *testing.T) {
 	mock := &mockClient{
-		artistGetSimilarFn: func(artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error) {
+		artistGetSimilarFn: func(ctx context.Context, artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error) {
 			return nil, fmt.Errorf("connection refused")
 		},
 	}
@@ -130,7 +131,7 @@ func TestHandleArtistGetSimilar_ClientError(t *testing.T) {
 
 func TestHandleArtistGetInfo_Valid(t *testing.T) {
 	mock := &mockClient{
-		artistGetInfoFn: func(artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error) {
+		artistGetInfoFn: func(ctx context.Context, artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error) {
 			info := &lastfm.ArtistInfo{Name: "Radiohead"}
 			info.Tags.Tag = []lastfm.ArtistTag{
 				{Name: "Alternative Rock"},
@@ -182,7 +183,7 @@ func TestHandleArtistGetInfo_InvalidArtist(t *testing.T) {
 
 func TestHandleArtistGetInfo_EmptyArtist(t *testing.T) {
 	mock := &mockClient{
-		artistGetInfoFn: func(artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error) {
+		artistGetInfoFn: func(ctx context.Context, artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error) {
 			return nil, fmt.Errorf("either Artist or MBID must be provided")
 		},
 	}
@@ -199,7 +200,7 @@ func TestHandleArtistGetInfo_EmptyArtist(t *testing.T) {
 
 func TestHandleArtistGetInfo_ClientError(t *testing.T) {
 	mock := &mockClient{
-		artistGetInfoFn: func(artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error) {
+		artistGetInfoFn: func(ctx context.Context, artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error) {
 			return nil, fmt.Errorf("api error")
 		},
 	}
@@ -309,7 +310,7 @@ func TestHandleAppendSimilarArtists_ZeroWeight(t *testing.T) {
 
 func TestHandleUserGetTopArtists_Valid(t *testing.T) {
 	mock := &mockClient{
-		userGetTopArtistsFn: func(user, period string, limit, page int) ([]lastfm.TopArtist, error) {
+		userGetTopArtistsFn: func(ctx context.Context, user, period string, limit, page int) ([]lastfm.TopArtist, error) {
 			return []lastfm.TopArtist{
 				{Name: "Radiohead", Playcount: "500"},
 			}, nil
@@ -362,7 +363,7 @@ func TestHandleUserGetTopArtists_InvalidPeriod(t *testing.T) {
 
 func TestHandleUserGetTopArtists_EmptyUser(t *testing.T) {
 	mock := &mockClient{
-		userGetTopArtistsFn: func(user, period string, limit, page int) ([]lastfm.TopArtist, error) {
+		userGetTopArtistsFn: func(ctx context.Context, user, period string, limit, page int) ([]lastfm.TopArtist, error) {
 			return nil, fmt.Errorf("user must be provided")
 		},
 	}
@@ -379,7 +380,7 @@ func TestHandleUserGetTopArtists_EmptyUser(t *testing.T) {
 
 func TestHandleUserGetTopArtists_ClientError(t *testing.T) {
 	mock := &mockClient{
-		userGetTopArtistsFn: func(user, period string, limit, page int) ([]lastfm.TopArtist, error) {
+		userGetTopArtistsFn: func(ctx context.Context, user, period string, limit, page int) ([]lastfm.TopArtist, error) {
 			return nil, fmt.Errorf("timeout")
 		},
 	}

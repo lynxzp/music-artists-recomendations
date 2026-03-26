@@ -1,6 +1,7 @@
 package lastfm
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -21,7 +22,7 @@ type topArtistsResponse struct {
 	} `json:"topartists"`
 }
 
-func (c *Client) UserGetTopArtists(user, period string, limit, page int) ([]TopArtist, error) {
+func (c *Client) UserGetTopArtists(ctx context.Context, user, period string, limit, page int) ([]TopArtist, error) {
 	if user == "" {
 		return nil, fmt.Errorf("user must be provided")
 	}
@@ -54,9 +55,15 @@ func (c *Client) UserGetTopArtists(user, period string, limit, page int) ([]TopA
 
 	if body == nil {
 		if c.limiter != nil {
-			c.limiter.Wait()
+			if err := c.limiter.Wait(ctx); err != nil {
+				return nil, fmt.Errorf("rate limiter wait cancelled: %w", err)
+			}
 		}
-		resp, err := c.httpClient.Get(requestURL)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			return nil, fmt.Errorf("request failed: %w", err)
 		}

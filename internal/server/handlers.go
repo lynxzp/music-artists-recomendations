@@ -23,7 +23,7 @@ func (s *Server) handleArtistGetSimilar(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	artists, err := s.client.ArtistGetSimilar(artist, "", s.config.SimilarArtistsLimit, true)
+	artists, err := s.client.ArtistGetSimilar(r.Context(), artist, "", s.config.SimilarArtistsLimit, true)
 	if err != nil {
 		s.logger.Error("failed to get similar artists", "artist", artist, "error", err)
 		http.Error(w, "failed to fetch similar artists", http.StatusInternalServerError)
@@ -55,7 +55,7 @@ func (s *Server) handleArtistGetInfo(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	info, err := s.client.ArtistGetInfo(artist, "", user, true)
+	info, err := s.client.ArtistGetInfo(r.Context(), artist, "", user, true)
 	if err != nil {
 		s.logger.Error("failed to get artist info", "artist", artist, "error", err)
 		http.Error(w, "failed to fetch artist info", http.StatusInternalServerError)
@@ -119,7 +119,7 @@ func (s *Server) handleUserGetTopArtists(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	artists, err := s.client.UserGetTopArtists(user, period, s.config.TopArtistsLimit, 0)
+	artists, err := s.client.UserGetTopArtists(r.Context(), user, period, s.config.TopArtistsLimit, 0)
 	if err != nil {
 		s.logger.Error("failed to get top artists", "user", user, "period", period, "error", err)
 		http.Error(w, "failed to fetch top artists", http.StatusInternalServerError)

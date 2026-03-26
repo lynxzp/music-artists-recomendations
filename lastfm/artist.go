@@ -1,6 +1,7 @@
 package lastfm
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -38,7 +39,7 @@ type similarArtistsResponse struct {
 	} `json:"similarartists"`
 }
 
-func (c *Client) ArtistGetSimilar(artist, mbid string, limit int, autocorrect bool) ([]SimilarArtist, error) {
+func (c *Client) ArtistGetSimilar(ctx context.Context, artist, mbid string, limit int, autocorrect bool) ([]SimilarArtist, error) {
 	if artist == "" && mbid == "" {
 		return nil, fmt.Errorf("either Artist or MBID must be provided")
 	}
@@ -73,9 +74,15 @@ func (c *Client) ArtistGetSimilar(artist, mbid string, limit int, autocorrect bo
 
 	if body == nil {
 		if c.limiter != nil {
-			c.limiter.Wait()
+			if err := c.limiter.Wait(ctx); err != nil {
+				return nil, fmt.Errorf("rate limiter wait cancelled: %w", err)
+			}
 		}
-		resp, err := c.httpClient.Get(requestURL)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			return nil, fmt.Errorf("request failed: %w", err)
 		}
@@ -111,7 +118,7 @@ type artistInfoResponse struct {
 	Artist ArtistInfo `json:"artist"`
 }
 
-func (c *Client) ArtistGetInfo(artist, mbid, username string, autocorrect bool) (*ArtistInfo, error) {
+func (c *Client) ArtistGetInfo(ctx context.Context, artist, mbid, username string, autocorrect bool) (*ArtistInfo, error) {
 	if artist == "" && mbid == "" {
 		return nil, fmt.Errorf("either Artist or MBID must be provided")
 	}
@@ -146,9 +153,15 @@ func (c *Client) ArtistGetInfo(artist, mbid, username string, autocorrect bool) 
 
 	if body == nil {
 		if c.limiter != nil {
-			c.limiter.Wait()
+			if err := c.limiter.Wait(ctx); err != nil {
+				return nil, fmt.Errorf("rate limiter wait cancelled: %w", err)
+			}
 		}
-		resp, err := c.httpClient.Get(requestURL)
+		req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create request: %w", err)
+		}
+		resp, err := c.httpClient.Do(req)
 		if err != nil {
 			return nil, fmt.Errorf("request failed: %w", err)
 		}

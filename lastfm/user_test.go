@@ -1,6 +1,7 @@
 package lastfm
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -8,7 +9,7 @@ import (
 
 func TestUserGetTopArtists_EmptyUser(t *testing.T) {
 	c := newTestClient("http://unused")
-	_, err := c.UserGetTopArtists("", "overall", 10, 1)
+	_, err := c.UserGetTopArtists(context.Background(), "", "overall", 10, 1)
 	if err == nil {
 		t.Fatal("expected error for empty user")
 	}
@@ -36,7 +37,7 @@ func TestUserGetTopArtists_ValidResponse(t *testing.T) {
 	defer server.Close()
 
 	c := newTestClient(server.URL)
-	artists, err := c.UserGetTopArtists("testuser", "7day", 5, 2)
+	artists, err := c.UserGetTopArtists(context.Background(), "testuser", "7day", 5, 2)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -58,7 +59,7 @@ func TestUserGetTopArtists_Non200Status(t *testing.T) {
 	defer server.Close()
 
 	c := newTestClient(server.URL)
-	_, err := c.UserGetTopArtists("testuser", "overall", 10, 1)
+	_, err := c.UserGetTopArtists(context.Background(), "testuser", "overall", 10, 1)
 	if err == nil {
 		t.Fatal("expected error for non-200 status")
 	}
@@ -71,7 +72,7 @@ func TestUserGetTopArtists_MalformedJSON(t *testing.T) {
 	defer server.Close()
 
 	c := newTestClient(server.URL)
-	_, err := c.UserGetTopArtists("testuser", "overall", 10, 1)
+	_, err := c.UserGetTopArtists(context.Background(), "testuser", "overall", 10, 1)
 	if err == nil {
 		t.Fatal("expected error for malformed JSON")
 	}
@@ -95,7 +96,7 @@ func TestUserGetTopArtists_OptionalParamsOmittedWhenZero(t *testing.T) {
 	defer server.Close()
 
 	c := newTestClient(server.URL)
-	_, err := c.UserGetTopArtists("testuser", "", 0, 0)
+	_, err := c.UserGetTopArtists(context.Background(), "testuser", "", 0, 0)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}

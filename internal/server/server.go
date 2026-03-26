@@ -23,9 +23,9 @@ type Config struct {
 }
 
 type MusicClient interface {
-	ArtistGetSimilar(artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error)
-	ArtistGetInfo(artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error)
-	UserGetTopArtists(user, period string, limit, page int) ([]lastfm.TopArtist, error)
+	ArtistGetSimilar(ctx context.Context, artist, mbid string, limit int, autocorrect bool) ([]lastfm.SimilarArtist, error)
+	ArtistGetInfo(ctx context.Context, artist, mbid, username string, autocorrect bool) (*lastfm.ArtistInfo, error)
+	UserGetTopArtists(ctx context.Context, user, period string, limit, page int) ([]lastfm.TopArtist, error)
 }
 
 type Server struct {

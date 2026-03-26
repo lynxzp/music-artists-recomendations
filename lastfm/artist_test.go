@@ -1,6 +1,7 @@
 package lastfm
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -133,7 +134,7 @@ func TestAppendSimilarArtists(t *testing.T) {
 
 func TestArtistGetSimilar_EmptyInputs(t *testing.T) {
 	c := newTestClient("http://unused")
-	_, err := c.ArtistGetSimilar("", "", 10, false)
+	_, err := c.ArtistGetSimilar(context.Background(), "", "", 10, false)
 	if err == nil {
 		t.Fatal("expected error for empty artist and mbid")
 	}
@@ -147,7 +148,7 @@ func TestArtistGetSimilar_ValidResponse(t *testing.T) {
 	defer server.Close()
 
 	c := newTestClient(server.URL)
-	artists, err := c.ArtistGetSimilar("Radiohead", "", 10, true)
+	artists, err := c.ArtistGetSimilar(context.Background(), "Radiohead", "", 10, true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -169,7 +170,7 @@ func TestArtistGetSimilar_Non200Status(t *testing.T) {
 	defer server.Close()
 
 	c := newTestClient(server.URL)
-	_, err := c.ArtistGetSimilar("Radiohead", "", 10, false)
+	_, err := c.ArtistGetSimilar(context.Background(), "Radiohead", "", 10, false)
 	if err == nil {
 		t.Fatal("expected error for non-200 status")
 	}
@@ -182,7 +183,7 @@ func TestArtistGetSimilar_MalformedJSON(t *testing.T) {
 	defer server.Close()
 
 	c := newTestClient(server.URL)
-	_, err := c.ArtistGetSimilar("Radiohead", "", 10, false)
+	_, err := c.ArtistGetSimilar(context.Background(), "Radiohead", "", 10, false)
 	if err == nil {
 		t.Fatal("expected error for malformed JSON")
 	}
@@ -190,7 +191,7 @@ func TestArtistGetSimilar_MalformedJSON(t *testing.T) {
 
 func TestArtistGetInfo_EmptyInputs(t *testing.T) {
 	c := newTestClient("http://unused")
-	_, err := c.ArtistGetInfo("", "", "", false)
+	_, err := c.ArtistGetInfo(context.Background(), "", "", "", false)
 	if err == nil {
 		t.Fatal("expected error for empty artist and mbid")
 	}
@@ -204,7 +205,7 @@ func TestArtistGetInfo_ValidResponse(t *testing.T) {
 	defer server.Close()
 
 	c := newTestClient(server.URL)
-	info, err := c.ArtistGetInfo("Radiohead", "", "", true)
+	info, err := c.ArtistGetInfo(context.Background(), "Radiohead", "", "", true)
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
@@ -226,7 +227,7 @@ func TestArtistGetInfo_Non200Status(t *testing.T) {
 	defer server.Close()
 
 	c := newTestClient(server.URL)
-	_, err := c.ArtistGetInfo("Radiohead", "", "", false)
+	_, err := c.ArtistGetInfo(context.Background(), "Radiohead", "", "", false)
 	if err == nil {
 		t.Fatal("expected error for non-200 status")
 	}
@@ -239,7 +240,7 @@ func TestArtistGetInfo_MalformedJSON(t *testing.T) {
 	defer server.Close()
 
 	c := newTestClient(server.URL)
-	_, err := c.ArtistGetInfo("Radiohead", "", "", false)
+	_, err := c.ArtistGetInfo(context.Background(), "Radiohead", "", "", false)
 	if err == nil {
 		t.Fatal("expected error for malformed JSON")
 	}
