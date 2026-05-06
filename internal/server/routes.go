@@ -8,4 +8,5 @@ func (s *Server) registerRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/artist/info", s.handleArtistGetInfo)
 	mux.HandleFunc("POST /api/append", s.handleAppendSimilarArtists)
 	mux.HandleFunc("GET /api/user/top-artists", s.handleUserGetTopArtists)
+	initStaticRoutes(mux)
 }

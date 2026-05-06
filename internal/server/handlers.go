@@ -8,9 +8,14 @@ import (
 )
 
 func (s *Server) handleIndex(w http.ResponseWriter, r *http.Request) {
+	data, err := staticFS.ReadFile("static/index.html")
+	if err != nil {
+		s.logger.Error("failed to read index.html", "error", err)
+		http.Error(w, "internal error", http.StatusInternalServerError)
+		return
+	}
 	w.Header().Set("Content-Type", "text/html")
-	html := indexHTML()
-	if _, err := w.Write([]byte(html)); err != nil {
+	if _, err := w.Write(data); err != nil {
 		s.logger.Error("failed to write index response", "error", err)
 	}
 }
