@@ -484,7 +484,30 @@ function renderGatheringPanel() {
     '<div class="gathering-log">' + log + '</div>' +
   '</div>';
 }
-function renderHelpOverlay() { return ''; }
+function renderHelpOverlay() {
+  const shortcuts = [
+    ['j / ↓', 'Move down'],
+    ['k / ↑', 'Move up'],
+    ['e', 'Toggle row expand'],
+    ['x', 'Hide selected artist'],
+    ['/', 'Focus add-artist input'],
+    ['?', 'Toggle this dialog'],
+    ['esc', 'Close dialog'],
+  ];
+  return '<div class="help-overlay" onclick="App.toggleHelp()">' +
+    '<div class="help-card" onclick="event.stopPropagation()">' +
+      '<div class="help-card-header">' +
+        '<h3>Keyboard shortcuts</h3>' +
+        '<button class="icon-btn" onclick="App.toggleHelp()">×</button>' +
+      '</div>' +
+      '<table>' +
+        shortcuts.map(([k, v]) =>
+          '<tr><td><kbd>' + escapeHtml(k) + '</kbd></td><td style="color:' + swiss.muted + ';padding-left:18px">' + escapeHtml(v) + '</td></tr>'
+        ).join('') +
+      '</table>' +
+    '</div>' +
+  '</div>';
+}
 
 // === Actions ===
 App.toggleHelp = function() { App.showHelp = !App.showHelp; renderApp(); };
@@ -718,12 +741,48 @@ function attachEventListeners() {
 
 // === Keyboard ===
 document.addEventListener('keydown', function(e) {
-  if (App.showHelp && e.key === 'Escape') { App.showHelp = false; renderApp(); return; }
+  if (App.showHelp) {
+    if (e.key === 'Escape' || e.key === '?') { App.showHelp = false; renderApp(); }
+    return;
+  }
   if (e.target.matches('input,textarea')) {
     if (e.key === 'Escape') { e.target.blur(); e.preventDefault(); }
     return;
   }
-  if (e.key === '?') { e.preventDefault(); App.toggleHelp(); }
+  if (e.key === '?') { e.preventDefault(); App.toggleHelp(); return; }
+  if (App.phase !== 'results') return;
+
+  const visible = getVisibleResults();
+  if (e.key === 'j' || e.key === 'ArrowDown') {
+    e.preventDefault();
+    const idx = visible.findIndex(r => r.name === App.selected);
+    const next = idx < 0 ? 0 : Math.min(visible.length - 1, idx + 1);
+    App.selected = visible[next] ? visible[next].name : null;
+    renderApp();
+  }
+  if (e.key === 'k' || e.key === 'ArrowUp') {
+    e.preventDefault();
+    const idx = visible.findIndex(r => r.name === App.selected);
+    const next = idx <= 0 ? 0 : idx - 1;
+    App.selected = visible[next] ? visible[next].name : null;
+    renderApp();
+  }
+  if (e.key === 'e') {
+    e.preventDefault();
+    if (App.selected) {
+      App.selected = null;
+      renderApp();
+    }
+  }
+  if (e.key === '/') {
+    e.preventDefault();
+    const input = document.getElementById('add-seed-input') || document.getElementById('results-filter');
+    if (input) input.focus();
+  }
+  if (e.key === 'x' && App.selected) {
+    e.preventDefault();
+    App.hideArtist(App.selected);
+  }
 });
 
 // === Init ===
