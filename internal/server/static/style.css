@@ -112,7 +112,7 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); fo
   padding: 8px 10px; background: var(--panel); border-bottom: 1px solid var(--line);
   font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted);
 }
-.seeds-scroll { max-height: 280px; overflow-y: auto; }
+.seeds-scroll { max-height: 360px; overflow-y: auto; }
 .seed-row {
   display: grid; grid-template-columns: 2.2rem 1fr 5rem 5.5rem; gap: 8px;
   padding: var(--row-pad); border-bottom: 1px solid var(--hairline);
