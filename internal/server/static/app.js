@@ -182,7 +182,7 @@ function renderEmptyState() {
   const error = App.error ? '<div class="inline-error">⚠ ' + escapeHtml(App.error) + '</div>' : '';
   return '<div class="empty-state">' +
     '<h1 class="empty-h1">Recommendations</h1>' +
-    '<p class="empty-hint">Enter a last.fm username to bootstrap your seed list, or skip and add artists manually.</p>' +
+    '<p class="empty-hint">Enter a last.fm username to bootstrap your favorite artists list, or skip and add artists manually.</p>' +
     '<form class="empty-form" id="empty-form" onsubmit="return false">' +
       '<input type="text" id="empty-username" placeholder="last.fm username" autofocus>' +
       '<button type="submit" class="btn btn-primary">Sync →</button>' +
@@ -216,7 +216,7 @@ function renderControlsRow() {
       '<h1 class="stat-h1">Recommendations</h1>' +
       '<div class="stat-subtitle">' + escapeHtml(subtitle) + '</div>' +
     '</div>' +
-    '<div style="grid-column:7 / span 2">' + renderStat('Seeds', App.seeds.length) + '</div>' +
+    '<div style="grid-column:7 / span 2">' + renderStat('Favorites', App.seeds.length) + '</div>' +
     '<div style="grid-column:9 / span 2">' + renderStat('Candidates', App.phase === 'results' ? visibleCount : '—') + '</div>' +
     '<div style="grid-column:11 / span 2">' + renderStat('Hidden', App.hidden.length) + '</div>' +
   '</div>';
@@ -327,7 +327,7 @@ function renderExpandedRow(rec, maxTotal) {
     '<div style="padding:8px 0">' +
       '<div class="breakdown-reason">Similarity breakdown</div>' +
       '<table class="breakdown-table">' +
-        '<thead><tr><th>Seed</th><th>Sim</th><th>Weight</th><th>Contrib</th><th></th></tr></thead>' +
+        '<thead><tr><th>Favorite</th><th>Sim</th><th>Weight</th><th>Contrib</th><th></th></tr></thead>' +
         '<tbody>' + rows + '</tbody>' +
       '</table>' +
     '</div>' +
@@ -360,7 +360,7 @@ function renderEditingLayout() {
                         '';
   if (isMobile) {
     return '<div class="tab-bar" role="tablist">' +
-      '<button role="tab" aria-selected="' + (App.mobileTab === 'seeds' ? 'true' : 'false') + '" onclick="App.setMobileTab(\'seeds\')">Seeds</button>' +
+      '<button role="tab" aria-selected="' + (App.mobileTab === 'seeds' ? 'true' : 'false') + '" onclick="App.setMobileTab(\'seeds\')">Favorites</button>' +
       '<button role="tab" aria-selected="' + (App.mobileTab === 'results' ? 'true' : 'false') + '" onclick="App.setMobileTab(\'results\')">Results</button>' +
     '</div>' +
     '<div class="tab-pane ' + (App.mobileTab === 'seeds' ? 'is-active' : '') + '">' + renderSeedsPanel() + '</div>' +
@@ -381,7 +381,7 @@ App.setMobileTab = function(tab) {
 function renderSeedsPanel() {
   let rows = '';
   if (App.seeds.length === 0) {
-    rows = '<div class="seeds-empty">No seeds yet — add some below.</div>';
+    rows = '<div class="seeds-empty">No favorite artists yet — add some below.</div>';
   } else {
     rows = App.seeds.map((sd, i) =>
       '<div class="seed-row">' +
@@ -398,7 +398,7 @@ function renderSeedsPanel() {
 
   return '<div>' +
     '<div class="section-head">' +
-      '<div class="section-head-label">01 · Seeds</div>' +
+      '<div class="section-head-label">01 · Favorites</div>' +
       (App.lastfmUser ? '<div style="display:flex;gap:8px;align-items:center;font-size:11px;color:' + swiss.muted + '">' +
         '<span style="font-family:' + swiss.mono + '">last.fm · @' + escapeHtml(App.lastfmUser) + '</span>' +
         '<button class="btn btn-sm" onclick="App.resync()">Resync</button></div>' : '') +
@@ -434,7 +434,7 @@ function renderSidePanel() {
     '<div class="side-meta">' +
       renderMeta('last run', App.phase === 'results' ? 'just now' : '—') +
       renderMeta('candidates', App.phase === 'results' ? App.results.length + ' (of ' + (App.seeds.length * 300) + ' raw)' : '—') +
-      renderMeta('seed pool', (App.seeds.length * 300) + ' lookups') +
+      renderMeta('lookup pool', (App.seeds.length * 300) + ' lookups') +
       renderMeta('compute', App.phase === 'results' ? App.computeTime + 's' : '—') +
     '</div>' +
     hiddenChips +
