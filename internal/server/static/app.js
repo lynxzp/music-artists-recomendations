@@ -101,6 +101,16 @@ function setHiddenArtists(list) {
   localStorage.setItem(getHiddenKey(), JSON.stringify(list));
 }
 
+function autoHideTop50() {
+  const hidden = getHiddenArtists();
+  const top50 = App.seeds.slice(0, 50).map(s => s.name.toLowerCase());
+  for (const name of top50) {
+    if (!hidden.includes(name)) hidden.push(name);
+  }
+  setHiddenArtists(hidden);
+  App.hidden = getHiddenArtists();
+}
+
 function saveState() {
   localStorage.setItem('savedUsername', App.lastfmUser);
   localStorage.setItem('savedArtists', JSON.stringify(App.seeds.map(s => ({ name: s.name, weight: s.weight }))));
@@ -168,7 +178,6 @@ function renderHeader() {
     '<div class="app-header-left">' +
       '<div class="app-header-breadcrumb">/ Music · Artist · Recommendations</div>' +
       '<span style="width:4px;height:4px;border-radius:50%;background:' + swiss.muted + '"></span>' +
-      '<div class="app-header-version">v0.4.2</div>' +
     '</div>' +
     '<div class="app-header-right">' +
       (user ? '<div class="app-header-pill">' +
@@ -567,6 +576,7 @@ App.resync = function() {
 
 App.go = async function() {
   if (App.seeds.length === 0) return;
+  autoHideTop50();
   App.artistInfoCache = new Map();
   App.progress = { done: 0, total: App.seeds.length, log: [] };
   App.computeTime = null;
@@ -618,7 +628,7 @@ App.go = async function() {
 
   App.computeTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
-  App.results = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total).slice(0, DISPLAY_LIMIT);
+  App.results = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total);
 
   populateArtistInfo();
 
@@ -628,7 +638,8 @@ App.go = async function() {
 
 async function populateArtistInfo() {
   const batchSize = 10;
-  for (let i = 0; i < App.results.length; i += batchSize) {
+  const limit = DISPLAY_LIMIT * 2;
+  for (let i = 0; i < Math.min(App.results.length, limit); i += batchSize) {
     const batch = App.results.slice(i, i + batchSize);
     await Promise.all(batch.map(async (rec) => {
       const info = await fetchArtistInfo(rec.name, App.lastfmUser);
@@ -702,6 +713,9 @@ async function doSync(username) {
   if (App.seeds.length === 0) {
     App.error = 'No artists found for user ' + username;
   }
+
+  autoHideTop50();
+
   setPhase('editing');
   saveState();
 }
