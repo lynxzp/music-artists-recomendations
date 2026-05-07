@@ -445,8 +445,7 @@ function renderMeta(k, v) {
   return '<div class="meta-row"><span>' + escapeHtml(k) + '</span><span>' + escapeHtml(v) + '</span></div>';
 }
 
-function renderGatheringPanel() {
-  const pct = (App.progress.done / Math.max(1, App.progress.total)) * 100;
+function buildGatheringLogHTML() {
   let log = '';
   for (let i = 0; i < App.seeds.length; i++) {
     const sd = App.seeds[i];
@@ -460,15 +459,40 @@ function renderGatheringPanel() {
       '<span>' + (entry ? ('+' + entry.novel + ' new') : '') + '</span>' +
     '</div>';
   }
+  return log;
+}
 
+function renderGatheringPanel() {
+  const pct = (App.progress.done / Math.max(1, App.progress.total)) * 100;
   return '<div class="gathering-panel">' +
     '<div class="gathering-header">' +
       '<div class="section-head"><div class="section-head-label">Gathering similar artists</div></div>' +
       '<div class="gathering-counter">' + App.progress.done + '/' + App.progress.total + '</div>' +
     '</div>' +
     '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
-    '<div class="gathering-log">' + log + '</div>' +
+    '<div class="gathering-log">' + buildGatheringLogHTML() + '</div>' +
   '</div>';
+}
+
+function updateGatheringPanel() {
+  const panel = document.querySelector('.gathering-panel');
+  if (!panel) return;
+  const pct = (App.progress.done / Math.max(1, App.progress.total)) * 100;
+  const counter = panel.querySelector('.gathering-counter');
+  if (counter) counter.textContent = App.progress.done + '/' + App.progress.total;
+  const fill = panel.querySelector('.progress-fill');
+  if (fill) fill.style.width = pct + '%';
+  const logEl = panel.querySelector('.gathering-log');
+  if (logEl) {
+    const wasAtBottom = (logEl.scrollTop + logEl.clientHeight) >= (logEl.scrollHeight - 5);
+    const prevScrollTop = logEl.scrollTop;
+    logEl.innerHTML = buildGatheringLogHTML();
+    if (wasAtBottom) {
+      logEl.scrollTop = logEl.scrollHeight;
+    } else {
+      logEl.scrollTop = prevScrollTop;
+    }
+  }
 }
 function renderHelpOverlay() {
   const shortcuts = [
@@ -555,12 +579,7 @@ App.go = async function() {
     try {
       const data = await fetchWithRetry(
         './api/artist/similar?artist=' + encodeURIComponent(seed.name),
-        60,
-        (msg) => {
-          const log = App.progress.log.find(x => x.seed === seed.name);
-          if (log) log.retryMsg = msg;
-          renderApp();
-        }
+        60
       );
       const artists = data.data.artists || [];
       let novel = 0;
@@ -589,7 +608,7 @@ App.go = async function() {
       App.progress.log.push({ seed: seed.name, count: 0, novel: 0, failed: true });
     }
     App.progress.done = i + 1;
-    renderApp();
+    updateGatheringPanel();
   }
 
   App.computeTime = ((Date.now() - startTime) / 1000).toFixed(1);
