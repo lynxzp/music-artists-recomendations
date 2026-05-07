@@ -396,7 +396,7 @@ function renderSeedsPanel() {
     '</div>' +
     '<div class="seeds-panel">' +
       '<div class="seeds-header">' +
-        '<div>#</div><div>Artist</div><div style="text-align:right">Plays</div><div style="text-align:right">Weight</div>' +
+        '<div>#</div><div>Artist</div><div>Plays</div><div>Weight</div>' +
       '</div>' +
       '<div class="seeds-scroll">' + rows + '</div>' +
     '</div>' +
