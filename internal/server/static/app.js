@@ -163,7 +163,6 @@ function renderApp() {
     html += renderEditingLayout();
   }
   html += '</div>';
-  if (App.showHelp) html += renderHelpOverlay();
   app.innerHTML = html;
   attachEventListeners();
   for (const sel of ['.gathering-log', '.seeds-scroll']) {
@@ -183,7 +182,6 @@ function renderHeader() {
       (user ? '<div class="app-header-pill">' +
         '<span class="pill-dot"></span><span>last.fm</span>' +
         '<span class="pill-user">@' + escapeHtml(user) + '</span></div>' : '') +
-      '<button class="btn btn-sm" onclick="App.toggleHelp()" title="Keyboard shortcuts">?</button>' +
     '</div>' +
   '</header>';
 }
@@ -505,33 +503,8 @@ function updateGatheringPanel() {
     }
   }
 }
-function renderHelpOverlay() {
-  const shortcuts = [
-    ['j / ↓', 'Move down'],
-    ['k / ↑', 'Move up'],
-    ['e', 'Toggle row expand'],
-    ['x', 'Hide selected artist'],
-    ['/', 'Focus add-artist input'],
-    ['?', 'Toggle this dialog'],
-    ['esc', 'Close dialog'],
-  ];
-  return '<div class="help-overlay" onclick="App.toggleHelp()">' +
-    '<div class="help-card" onclick="event.stopPropagation()">' +
-      '<div class="help-card-header">' +
-        '<h3>Keyboard shortcuts</h3>' +
-        '<button class="icon-btn" onclick="App.toggleHelp()">×</button>' +
-      '</div>' +
-      '<table>' +
-        shortcuts.map(([k, v]) =>
-          '<tr><td><kbd>' + escapeHtml(k) + '</kbd></td><td style="color:' + swiss.muted + ';padding-left:18px">' + escapeHtml(v) + '</td></tr>'
-        ).join('') +
-      '</table>' +
-    '</div>' +
-  '</div>';
-}
 
 // === Actions ===
-App.toggleHelp = function() { App.showHelp = !App.showHelp; renderApp(); };
 
 App.skipSync = function() {
   App.lastfmUser = '';
@@ -731,11 +704,6 @@ function attachEventListeners() {
     });
   }
   const addInput = document.getElementById('add-seed-input');
-  if (addInput) {
-    addInput.addEventListener('keydown', function(e) {
-      if (e.key === 'Enter') { e.preventDefault(); App.addSeedFromInput(); }
-    });
-  }
   document.querySelectorAll('.seed-row input').forEach(function(inp) {
     inp.addEventListener('change', function() {
       const idx = parseInt(inp.dataset.seedIdx, 10);
@@ -743,52 +711,6 @@ function attachEventListeners() {
     });
   });
 }
-
-// === Keyboard ===
-document.addEventListener('keydown', function(e) {
-  if (App.showHelp) {
-    if (e.key === 'Escape' || e.key === '?') { App.showHelp = false; renderApp(); }
-    return;
-  }
-  if (e.target.matches('input,textarea')) {
-    if (e.key === 'Escape') { e.target.blur(); e.preventDefault(); }
-    return;
-  }
-  if (e.key === '?') { e.preventDefault(); App.toggleHelp(); return; }
-  if (App.phase !== 'results') return;
-
-  const visible = getVisibleResults();
-  if (e.key === 'j' || e.key === 'ArrowDown') {
-    e.preventDefault();
-    const idx = visible.findIndex(r => r.name === App.selected);
-    const next = idx < 0 ? 0 : Math.min(visible.length - 1, idx + 1);
-    App.selected = visible[next] ? visible[next].name : null;
-    renderApp();
-  }
-  if (e.key === 'k' || e.key === 'ArrowUp') {
-    e.preventDefault();
-    const idx = visible.findIndex(r => r.name === App.selected);
-    const next = idx <= 0 ? 0 : idx - 1;
-    App.selected = visible[next] ? visible[next].name : null;
-    renderApp();
-  }
-  if (e.key === 'e') {
-    e.preventDefault();
-    if (App.selected) {
-      App.selected = null;
-      renderApp();
-    }
-  }
-  if (e.key === '/') {
-    e.preventDefault();
-    const input = document.getElementById('add-seed-input');
-    if (input) input.focus();
-  }
-  if (e.key === 'x' && App.selected) {
-    e.preventDefault();
-    App.hideArtist(App.selected);
-  }
-});
 
 // === Init ===
 function init() {
