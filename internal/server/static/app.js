@@ -37,13 +37,9 @@ const App = {
   error: null,
   progress: { done: 0, total: 0, log: [] },
   selected: null,
-  sortKey: 'rank',
-  filter: '',
   mobileTab: 'seeds',
   periodData: {},
   artistInfoCache: new Map(),
-  autoHiddenArtists: [],
-  unexcludedArtists: new Set(),
   lastRenderArgs: null,
 };
 
@@ -148,8 +144,7 @@ function renderApp() {
   else if (App.phase === 'syncing') html += renderSyncingState();
   else if (App.phase === 'editing' || App.phase === 'gathering' || App.phase === 'results') {
     html += renderControlsRow();
-    if (App.phase === 'gathering') html += renderGatheringPanel();
-    else html += renderEditingLayout();
+    html += renderEditingLayout();
   }
   html += '</div>';
   if (App.showHelp) html += renderHelpOverlay();
@@ -236,24 +231,9 @@ function renderResultsPanel() {
 }
 
 function getVisibleResults() {
-  let out = App.results.filter(r => !App.hidden.includes(r.name));
   const hiddenSet = new Set(App.hidden);
-  const top30 = [...App.seeds].sort((a, b) => b.weight - a.weight).slice(0, 30);
-  const inputNames = new Set(top30.map(a => a.name.toLowerCase()));
-  App.autoHiddenArtists = top30.map(a => a.name).filter(n => !App.unexcludedArtists.has(n.toLowerCase()));
-  out = out.filter(r => {
-    const key = r.name.toLowerCase();
-    return !(inputNames.has(key) && !App.unexcludedArtists.has(key)) && !hiddenSet.has(key);
-  });
-
-  const f = (App.filter || '').toLowerCase();
-  if (f) {
-    out = out.filter(r => r.name.toLowerCase().includes(f) ||
-      (r.genres || []).some(g => g.toLowerCase().includes(f)));
-  }
-  if (App.sortKey === 'rank') out.sort((a, b) => b.total - a.total);
-  if (App.sortKey === 'name') out.sort((a, b) => a.name.localeCompare(b.name));
-  if (App.sortKey === 'genre') out.sort((a, b) => ((a.genres || [])[0] || '').localeCompare(((b.genres || [])[0] || '')));
+  let out = App.results.filter(r => !hiddenSet.has(r.name.toLowerCase()));
+  out.sort((a, b) => b.total - a.total);
   return out.slice(0, DISPLAY_LIMIT);
 }
 
@@ -267,13 +247,6 @@ function renderResultsTable(visible) {
   return '<div>' +
     '<div class="results-header-bar">' +
       '<div class="section-head"><div class="section-head-label">03 · Results (' + visible.length + ')</div></div>' +
-      '<div class="results-controls">' +
-        '<input type="text" id="results-filter" placeholder="filter…" value="' + escapeHtml(App.filter) + '">' +
-        '<span>Sort:</span>' +
-        ['rank', 'name', 'genre'].map(k =>
-          '<button class="' + (App.sortKey === k ? 'active' : '') + '" onclick="App.setSortKey(\'' + k + '\')">' + k + '</button>'
-        ).join('') +
-      '</div>' +
     '</div>' +
     '<table class="results-table">' +
       '<thead><tr>' +
@@ -373,21 +346,22 @@ function renderResultsCards(visible) {
 
 function renderEditingLayout() {
   const isMobile = window.innerWidth <= 768;
+  const bottomContent = App.phase === 'gathering' ? renderGatheringPanel() :
+                        App.phase === 'results' ? renderResultsPanel() :
+                        '';
   if (isMobile) {
     return '<div class="tab-bar" role="tablist">' +
       '<button role="tab" aria-selected="' + (App.mobileTab === 'seeds' ? 'true' : 'false') + '" onclick="App.setMobileTab(\'seeds\')">Seeds</button>' +
       '<button role="tab" aria-selected="' + (App.mobileTab === 'results' ? 'true' : 'false') + '" onclick="App.setMobileTab(\'results\')">Results</button>' +
     '</div>' +
-    '<div class="two-col">' +
-      '<div class="tab-pane ' + (App.mobileTab === 'seeds' ? 'is-active' : '') + '">' + renderSeedsPanel() + '</div>' +
-      '<div class="tab-pane ' + (App.mobileTab === 'results' ? 'is-active' : '') + '">' + renderResultsPanel() + '</div>' +
-    '</div>';
+    '<div class="tab-pane ' + (App.mobileTab === 'seeds' ? 'is-active' : '') + '">' + renderSeedsPanel() + '</div>' +
+    '<div class="tab-pane ' + (App.mobileTab === 'results' ? 'is-active' : '') + '">' + bottomContent + '</div>';
   }
-  const leftPanel = App.phase === 'results' ? renderResultsPanel() : renderSeedsPanel();
   return '<div class="two-col">' +
-    '<div>' + leftPanel + '</div>' +
+    '<div>' + renderSeedsPanel() + '</div>' +
     '<div>' + renderSidePanel() + '</div>' +
-  '</div>';
+  '</div>' +
+  (bottomContent ? '<div class="bottom-row">' + bottomContent + '</div>' : '');
 }
 
 App.setMobileTab = function(tab) {
@@ -558,7 +532,6 @@ App.resync = function() {
 
 App.go = async function() {
   if (App.seeds.length === 0) return;
-  App.unexcludedArtists = new Set();
   App.artistInfoCache = new Map();
   App.progress = { done: 0, total: App.seeds.length, log: [] };
   App.computeTime = null;
@@ -639,16 +612,6 @@ App.selectRow = function(name) {
   renderApp();
 };
 
-App.setSortKey = function(key) {
-  App.sortKey = key;
-  renderApp();
-};
-
-App.setFilter = function(value) {
-  App.filter = value;
-  renderApp();
-};
-
 App.hideArtist = function(name) {
   const hidden = getHiddenArtists();
   const key = name.toLowerCase();
@@ -664,9 +627,6 @@ App.unhideArtist = function(name) {
   const hidden = getHiddenArtists().filter(n => n !== name.toLowerCase());
   setHiddenArtists(hidden);
   App.hidden = getHiddenArtists();
-  if (App.autoHiddenArtists.map(a => a.toLowerCase()).includes(name.toLowerCase())) {
-    App.unexcludedArtists.add(name.toLowerCase());
-  }
   renderApp();
 };
 
@@ -734,12 +694,6 @@ function attachEventListeners() {
       App.updateSeedWeight(idx, inp.value);
     });
   });
-  const filterInput = document.getElementById('results-filter');
-  if (filterInput) {
-    filterInput.addEventListener('input', function() {
-      App.setFilter(filterInput.value);
-    });
-  }
 }
 
 // === Keyboard ===
@@ -779,7 +733,7 @@ document.addEventListener('keydown', function(e) {
   }
   if (e.key === '/') {
     e.preventDefault();
-    const input = document.getElementById('add-seed-input') || document.getElementById('results-filter');
+    const input = document.getElementById('add-seed-input');
     if (input) input.focus();
   }
   if (e.key === 'x' && App.selected) {

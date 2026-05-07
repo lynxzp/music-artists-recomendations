@@ -196,17 +196,7 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); fo
 
 /* ── Results ── */
 .results-header-bar { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 12px; }
-.results-controls { display: flex; gap: 12px; font-size: 11px; color: var(--muted); align-items: center; }
-.results-controls input {
-  font-family: var(--font); font-size: 11px; padding: 4px 8px;
-  border: 1px solid var(--line); outline: none; width: 120px;
-}
-.results-controls button {
-  background: transparent; border: none; cursor: pointer;
-  font-size: 11px; font-family: var(--font);
-  color: var(--muted); font-weight: 400;
-}
-.results-controls button.active { color: var(--ink); font-weight: 600; text-decoration: underline; text-underline-offset: 3px; }
+.bottom-row { margin-top: 24px; }
 
 .results-table { width: 100%; border-collapse: collapse; font-size: 13px; }
 .results-table thead tr {
