@@ -197,16 +197,10 @@ function renderSyncingState() {
 // Placeholders for phases not yet implemented
 function renderControlsRow() {
   const visibleCount = App.results.filter(r => !App.hidden.includes(r.name)).length;
-  const subtitle = {
-    editing: 'Tune weights, then run.',
-    gathering: 'Gathering similar artists…',
-    results: visibleCount + ' of 150 candidates · top of ' + (App.seeds.length * 300) + ' lookups'
-  }[App.phase] || '';
 
   return '<div class="stat-row">' +
     '<div style="grid-column:1 / span 5">' +
       '<h1 class="stat-h1">Recommendations</h1>' +
-      '<div class="stat-subtitle">' + escapeHtml(subtitle) + '</div>' +
     '</div>' +
     '<div style="grid-column:7 / span 2">' + renderStat('Favorites', App.seeds.length) + '</div>' +
     '<div style="grid-column:9 / span 2">' + renderStat('Candidates', App.phase === 'results' ? visibleCount : '—') + '</div>' +
@@ -416,12 +410,34 @@ function renderSeedsPanel() {
   '</div>';
 }
 
+function getGenreCounts() {
+  const counts = new Map();
+  for (const rec of App.results) {
+    if (!rec.genres) continue;
+    for (const g of rec.genres) {
+      counts.set(g, (counts.get(g) || 0) + 1);
+    }
+  }
+  return Array.from(counts.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([name, count]) => ({ name, count }));
+}
+
 function renderSidePanel() {
   const hiddenChips = App.hidden.length === 0 ? '' :
     '<div class="hidden-chips">' +
       '<div class="hidden-chips-label">Hidden (' + App.hidden.length + ')</div>' +
       '<div class="hidden-chip-list">' +
         App.hidden.map(n => '<span class="hidden-chip" onclick="App.unhideArtist(\'' + escapeHtml(n).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">' + escapeHtml(n) + '</span>').join('') +
+      '</div>' +
+    '</div>';
+
+  const genreCounts = App.phase === 'results' ? getGenreCounts() : [];
+  const genreChips = genreCounts.length === 0 ? '' :
+    '<div class="genre-chips">' +
+      '<div class="genre-chips-label">Genres (' + genreCounts.length + ')</div>' +
+      '<div class="genre-chip-list">' +
+        genreCounts.map(g => '<span class="genre-chip">' + escapeHtml(g.name) + ' (' + g.count + ')</span>').join('') +
       '</div>' +
     '</div>';
 
@@ -433,6 +449,7 @@ function renderSidePanel() {
       (App.failedSeeds.length > 0 ? renderMeta('failed lookups', App.failedSeeds.map(escapeHtml).join(', ')) : '') +
     '</div>' +
     hiddenChips +
+    genreChips +
   '</div>';
 }
 
