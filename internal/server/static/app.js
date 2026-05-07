@@ -137,6 +137,11 @@ function setPhase(phase) {
 function renderApp() {
   const app = document.getElementById('app');
   if (!app) return;
+  const scrollTops = {};
+  for (const sel of ['.gathering-log', '.seeds-scroll']) {
+    const el = document.querySelector(sel);
+    if (el) scrollTops[sel] = el.scrollTop;
+  }
   let html = '';
   html += renderHeader();
   html += '<div class="app-shell">';
@@ -150,6 +155,10 @@ function renderApp() {
   if (App.showHelp) html += renderHelpOverlay();
   app.innerHTML = html;
   attachEventListeners();
+  for (const sel of ['.gathering-log', '.seeds-scroll']) {
+    const el = document.querySelector(sel);
+    if (el && sel in scrollTops) el.scrollTop = scrollTops[sel];
+  }
 }
 
 function renderHeader() {
