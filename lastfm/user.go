@@ -7,6 +7,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"time"
 )
 
 type TopArtist struct {
@@ -79,7 +80,7 @@ func (c *Client) UserGetTopArtists(ctx context.Context, user, period string, lim
 		}
 
 		if c.cache != nil && len(body) > 0 {
-			c.cache.Set(requestURL, string(body))
+			c.cache.SetWithTTL(requestURL, string(body), 5*time.Minute)
 		}
 	}
 

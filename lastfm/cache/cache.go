@@ -31,13 +31,17 @@ func New(dbPath string) (*Cache, error) {
 		CREATE TABLE IF NOT EXISTS cache (
 			request   TEXT PRIMARY KEY,
 			response  TEXT NOT NULL,
-			timestamp INTEGER NOT NULL
+			timestamp INTEGER NOT NULL,
+			ttl       INTEGER NOT NULL DEFAULT 0
 		)
 	`)
 	if err != nil {
 		db.Close()
 		return nil, err
 	}
+
+	// Migrate existing databases that were created before the ttl column was added.
+	_, _ = db.Exec(`ALTER TABLE cache ADD COLUMN ttl INTEGER NOT NULL DEFAULT 0`)
 
 	c := &Cache{db: db}
 	c.cleanup()
@@ -48,11 +52,12 @@ func New(dbPath string) (*Cache, error) {
 func (c *Cache) Get(request string) (string, bool) {
 	var response string
 	var timestamp int64
+	var ttl int64
 
 	err := c.db.QueryRow(
-		"SELECT response, timestamp FROM cache WHERE request = ?",
+		"SELECT response, timestamp, ttl FROM cache WHERE request = ?",
 		request,
-	).Scan(&response, &timestamp)
+	).Scan(&response, &timestamp, &ttl)
 
 	if err != nil {
 		if !errors.Is(err, sql.ErrNoRows) {
@@ -62,7 +67,11 @@ func (c *Cache) Get(request string) (string, bool) {
 	}
 
 	entryTime := time.Unix(timestamp, 0)
-	if time.Since(entryTime) > maxAge {
+	maxAgeForEntry := maxAge
+	if ttl > 0 {
+		maxAgeForEntry = time.Duration(ttl) * time.Second
+	}
+	if time.Since(entryTime) > maxAgeForEntry {
 		if _, err := c.db.Exec("DELETE FROM cache WHERE request = ?", request); err != nil {
 			slog.Warn("failed to delete expired cache entry", "request", request, "error", err)
 		}
@@ -73,18 +82,31 @@ func (c *Cache) Get(request string) (string, bool) {
 }
 
 func (c *Cache) Set(request, response string) {
+	c.SetWithTTL(request, response, 0)
+}
+
+func (c *Cache) SetWithTTL(request, response string, ttl time.Duration) {
+	var ttlSeconds int64
+	if ttl > 0 {
+		ttlSeconds = int64(ttl.Seconds())
+	}
 	if _, err := c.db.Exec(`
-		INSERT OR REPLACE INTO cache (request, response, timestamp)
-		VALUES (?, ?, ?)
-	`, request, response, time.Now().Unix()); err != nil {
+		INSERT OR REPLACE INTO cache (request, response, timestamp, ttl)
+		VALUES (?, ?, ?, ?)
+	`, request, response, time.Now().Unix(), ttlSeconds); err != nil {
 		slog.Warn("failed to set cache entry", "request", request, "error", err)
 	}
 }
 
 func (c *Cache) cleanup() {
-	cutoff := time.Now().Add(-maxAge).Unix()
-	if _, err := c.db.Exec("DELETE FROM cache WHERE timestamp < ?", cutoff); err != nil {
-		slog.Warn("failed to cleanup expired cache entries", "cutoff", cutoff, "error", err)
+	now := time.Now().Unix()
+	defaultCutoff := time.Now().Add(-maxAge).Unix()
+	if _, err := c.db.Exec(`
+		DELETE FROM cache
+		WHERE (ttl > 0 AND timestamp + ttl < ?)
+		   OR (ttl = 0 AND timestamp < ?)
+	`, now, defaultCutoff); err != nil {
+		slog.Warn("failed to cleanup expired cache entries", "error", err)
 	}
 }
 

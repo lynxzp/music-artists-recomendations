@@ -41,6 +41,7 @@ const App = {
   periodData: {},
   artistInfoCache: new Map(),
   lastRenderArgs: null,
+  failedSeeds: [],
 };
 
 // === API ===
@@ -436,6 +437,7 @@ function renderSidePanel() {
       renderMeta('candidates', App.phase === 'results' ? App.results.length + ' (of ' + (App.seeds.length * 300) + ' raw)' : '—') +
       renderMeta('lookup pool', (App.seeds.length * 300) + ' lookups') +
       renderMeta('compute', App.phase === 'results' ? App.computeTime + 's' : '—') +
+      (App.failedSeeds.length > 0 ? renderMeta('failed lookups', App.failedSeeds.map(escapeHtml).join(', ')) : '') +
     '</div>' +
     hiddenChips +
   '</div>';
@@ -568,6 +570,7 @@ App.go = async function() {
   App.artistInfoCache = new Map();
   App.progress = { done: 0, total: App.seeds.length, log: [] };
   App.computeTime = null;
+  App.failedSeeds = [];
   const startTime = Date.now();
   setPhase('gathering');
 
@@ -610,6 +613,8 @@ App.go = async function() {
     App.progress.done = i + 1;
     updateGatheringPanel();
   }
+
+  App.failedSeeds = failed;
 
   App.computeTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
@@ -662,6 +667,7 @@ async function doSync(username) {
   App.lastfmUser = username;
   App.error = null;
   App.periodData = {};
+  App.failedSeeds = [];
   setPhase('syncing');
 
   for (const p of PERIODS) {
