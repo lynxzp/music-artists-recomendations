@@ -154,7 +154,6 @@ function renderApp() {
     if (el) scrollTops[sel] = el.scrollTop;
   }
   let html = '';
-  html += renderHeader();
   html += '<div class="app-shell">';
   if (App.phase === 'empty') html += renderEmptyState();
   else if (App.phase === 'syncing') html += renderSyncingState();
@@ -169,21 +168,6 @@ function renderApp() {
     const el = document.querySelector(sel);
     if (el && sel in scrollTops) el.scrollTop = scrollTops[sel];
   }
-}
-
-function renderHeader() {
-  const user = App.lastfmUser;
-  return '<header class="app-header">' +
-    '<div class="app-header-left">' +
-      '<div class="app-header-breadcrumb">/ Music · Artist · Recommendations</div>' +
-      '<span style="width:4px;height:4px;border-radius:50%;background:' + swiss.muted + '"></span>' +
-    '</div>' +
-    '<div class="app-header-right">' +
-      (user ? '<div class="app-header-pill">' +
-        '<span class="pill-dot"></span><span>last.fm</span>' +
-        '<span class="pill-user">@' + escapeHtml(user) + '</span></div>' : '') +
-    '</div>' +
-  '</header>';
 }
 
 function renderEmptyState() {
@@ -269,6 +253,7 @@ function renderResultsTable(visible) {
       '<thead><tr>' +
         '<th class="col-rank">#</th>' +
         '<th>Artist</th>' +
+        '<th class="col-plays">Plays</th>' +
         '<th class="col-genres">Genres</th>' +
         '<th class="col-similar">Similar to</th>' +
         '<th class="col-score">Score</th>' +
@@ -298,6 +283,7 @@ function renderRow(rec, rank, maxTotal) {
     '<td class="col-rank">' + String(rank).padStart(3, '0') + '</td>' +
     '<td class="col-name">' + escapeHtml(rec.name) +
       '<button class="hide-btn" onclick="event.stopPropagation();App.hideArtist(\'' + escapeHtml(rec.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">hide</button></td>' +
+    '<td class="col-plays">' + (App.lastfmUser && rec.userPlaycount ? rec.userPlaycount.toLocaleString() : '—') + '</td>' +
     '<td class="col-genres"><div class="genre-dot-list">' + genres + '</div></td>' +
     '<td class="col-similar">' + similarTo + '</td>' +
     '<td class="col-score">' + rec.total.toFixed(1) +
@@ -352,7 +338,9 @@ function renderResultsCards(visible) {
     ).join('');
     cards += '<div class="result-card">' +
       '<div style="display:flex;justify-content:space-between;align-items:baseline">' +
-        '<span style="font-weight:500;font-size:16px">' + escapeHtml(rec.name) + '</span>' +
+        '<span style="font-weight:500;font-size:16px">' + escapeHtml(rec.name) +
+          (App.lastfmUser && rec.userPlaycount ? ' <span class="artist-plays">' + rec.userPlaycount.toLocaleString() + '</span>' : '') +
+        '</span>' +
         '<span style="font-family:' + swiss.mono + ';font-size:11px;color:' + swiss.muted + '">' + rec.total.toFixed(1) + '</span>' +
       '</div>' +
       '<div class="genre-dot-list" style="margin-top:4px">' + genres + '</div>' +
@@ -440,9 +428,7 @@ function renderSidePanel() {
   return '<div>' +
     '<div class="section-head"><div class="section-head-label">02 · Meta</div></div>' +
     '<div class="side-meta">' +
-      renderMeta('last run', App.phase === 'results' ? 'just now' : '—') +
-      renderMeta('candidates', App.phase === 'results' ? App.results.length + ' (of ' + (App.seeds.length * 300) + ' raw)' : '—') +
-      renderMeta('lookup pool', (App.seeds.length * 300) + ' lookups') +
+      renderMeta('candidates', App.phase === 'results' ? App.results.length : '—') +
       renderMeta('compute', App.phase === 'results' ? App.computeTime + 's' : '—') +
       (App.failedSeeds.length > 0 ? renderMeta('failed lookups', App.failedSeeds.map(escapeHtml).join(', ')) : '') +
     '</div>' +
@@ -616,8 +602,13 @@ async function populateArtistInfo() {
     const batch = App.results.slice(i, i + batchSize);
     await Promise.all(batch.map(async (rec) => {
       const info = await fetchArtistInfo(rec.name, App.lastfmUser);
-      if (info && info.tags && info.tags.tag) {
-        rec.genres = info.tags.tag.slice(0, 5).map(t => t.name);
+      if (info) {
+        if (info.tags && info.tags.tag) {
+          rec.genres = info.tags.tag.slice(0, 5).map(t => t.name);
+        }
+        if (info.stats && info.stats.userplaycount) {
+          rec.userPlaycount = parseInt(info.stats.userplaycount, 10) || 0;
+        }
       }
     }));
     if (App.phase === 'results') renderApp();

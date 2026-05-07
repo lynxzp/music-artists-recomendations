@@ -20,21 +20,6 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); fo
 /* ── Layout ── */
 .app-shell { max-width: 1280px; margin: 0 auto; padding: 0 24px 80px; }
 
-/* ── Header ── */
-.app-header {
-  position: sticky; top: 0; background: var(--bg); z-index: 5;
-  border-bottom: 1px solid var(--ink);
-  padding: 12px 24px;
-  display: flex; align-items: center; justify-content: space-between;
-}
-.app-header-left { display: flex; align-items: baseline; gap: 14px; }
-.app-header-breadcrumb {
-  font-size: 11px; letter-spacing: 1.5; text-transform: uppercase; color: var(--muted);
-}
-.app-header-right { display: flex; align-items: center; gap: 16px; font-size: 12px; }
-.app-header-pill { display: flex; align-items: center; gap: 8px; color: var(--muted); }
-.pill-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
-.pill-user { color: var(--ink); font-family: var(--mono); }
 
 .btn {
   font-family: var(--font); font-size: 12px; padding: 6px 12px;
@@ -45,6 +30,7 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); fo
   background: var(--accent); color: var(--bg); border: none;
 }
 .btn-sm { padding: 4px 9px; font-size: 11px; }
+.artist-plays { font-size: 11px; color: var(--muted); margin-left: 4px; }
 .icon-btn {
   background: transparent; border: none; cursor: pointer;
   padding: 2px 4px; font-size: 13px; font-family: var(--font);
@@ -223,6 +209,7 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); fo
 .genre-dot { display: flex; align-items: center; gap: 5px; }
 .genre-dot-color { width: 6px; height: 6px; border-radius: 50%; }
 .col-similar { font-size: 11px; color: var(--muted); }
+.col-plays { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 11px; width: 4rem; text-align: right; padding-right: 12px; }
 .col-score { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 11px; width: 4rem; text-align: right; }
 .score-bar-bg { width: 40px; height: 3px; background: var(--hairline); margin-top: 4px; }
 .score-bar-fill { height: 100%; background: var(--ink); }
@@ -277,7 +264,6 @@ kbd {
 @media (max-width: 768px) {
   :root { --row-pad: 6px 10px; }
   .app-shell { padding: 0 16px 40px; }
-  .app-header { padding: 10px 16px; flex-wrap: wrap; gap: 8px; }
   .stat-row { grid-template-columns: 1fr 1fr 1fr; gap: 12px; }
   .stat-h1 { font-size: 28px; }
   .two-col { grid-template-columns: 1fr; gap: 24px; }
@@ -297,8 +283,6 @@ kbd {
 
 /* ── Mobile-specific tweaks beyond base media query ── */
 @media (max-width: 768px) {
-  .app-header-breadcrumb { font-size: 10px; }
-  .app-header-version { display: none; }
   .stat-row { padding: 16px 0 12px; margin-bottom: 16px; }
   .stat-block-value { font-size: 22px; }
   .seeds-panel { border: none; }
