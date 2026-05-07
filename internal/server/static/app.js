@@ -223,7 +223,151 @@ function renderStat(label, value) {
   '</div>';
 }
 
-function renderResultsPanel() { return ''; }
+function renderResultsPanel() {
+  const visible = getVisibleResults();
+  const isMobile = window.innerWidth <= 768;
+
+  if (isMobile) {
+    return renderResultsCards(visible);
+  }
+  return renderResultsTable(visible);
+}
+
+function getVisibleResults() {
+  let out = App.results.filter(r => !App.hidden.includes(r.name));
+  const hiddenSet = new Set(App.hidden);
+  const top30 = [...App.seeds].sort((a, b) => b.weight - a.weight).slice(0, 30);
+  const inputNames = new Set(top30.map(a => a.name.toLowerCase()));
+  App.autoHiddenArtists = top30.map(a => a.name).filter(n => !App.unexcludedArtists.has(n.toLowerCase()));
+  out = out.filter(r => {
+    const key = r.name.toLowerCase();
+    return !(inputNames.has(key) && !App.unexcludedArtists.has(key)) && !hiddenSet.has(key);
+  });
+
+  const f = (App.filter || '').toLowerCase();
+  if (f) {
+    out = out.filter(r => r.name.toLowerCase().includes(f) ||
+      (r.genres || []).some(g => g.toLowerCase().includes(f)));
+  }
+  if (App.sortKey === 'rank') out.sort((a, b) => b.total - a.total);
+  if (App.sortKey === 'name') out.sort((a, b) => a.name.localeCompare(b.name));
+  if (App.sortKey === 'genre') out.sort((a, b) => ((a.genres || [])[0] || '').localeCompare(((b.genres || [])[0] || '')));
+  return out.slice(0, DISPLAY_LIMIT);
+}
+
+function renderResultsTable(visible) {
+  const maxTotal = visible.length > 0 ? visible[0].total : 1;
+  let rows = '';
+  for (let i = 0; i < visible.length; i++) {
+    rows += renderRow(visible[i], i + 1, maxTotal);
+  }
+
+  return '<div>' +
+    '<div class="results-header-bar">' +
+      '<div class="section-head"><div class="section-head-label">03 · Results (' + visible.length + ')</div></div>' +
+      '<div class="results-controls">' +
+        '<input type="text" id="results-filter" placeholder="filter…" value="' + escapeHtml(App.filter) + '">' +
+        '<span>Sort:</span>' +
+        ['rank', 'name', 'genre'].map(k =>
+          '<button class="' + (App.sortKey === k ? 'active' : '') + '" onclick="App.setSortKey(\'' + k + '\')">' + k + '</button>'
+        ).join('') +
+      '</div>' +
+    '</div>' +
+    '<table class="results-table">' +
+      '<thead><tr>' +
+        '<th class="col-rank">#</th>' +
+        '<th>Artist</th>' +
+        '<th class="col-genres">Genres</th>' +
+        '<th class="col-similar">Similar to</th>' +
+        '<th class="col-score">Score</th>' +
+      '</tr></thead>' +
+      '<tbody>' + rows + '</tbody>' +
+    '</table>' +
+    (visible.length === 0 ? '<div class="no-results">No matches.</div>' : '') +
+  '</div>';
+}
+
+function renderRow(rec, rank, maxTotal) {
+  const genres = (rec.genres || []).map(g =>
+    '<span class="genre-dot"><span class="genre-dot-color" style="background:' + genreColor(g) + '"></span>' + escapeHtml(g) + '</span>'
+  ).join('');
+
+  const topMatches = Object.entries(rec.matches || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .filter(([, val]) => val > 0)
+    .map(([name]) => escapeHtml(name));
+
+  const similarTo = topMatches.length > 0 ? topMatches.join(', ') : '';
+  const barWidth = maxTotal > 0 ? Math.round((rec.total / maxTotal) * 40) : 0;
+  const isSelected = App.selected === rec.name;
+
+  let html = '<tr data-artist="' + escapeHtml(rec.name) + '" class="' + (isSelected ? 'selected' : '') + '" onclick="App.selectRow(\'' + escapeHtml(rec.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">' +
+    '<td class="col-rank">' + String(rank).padStart(3, '0') + '</td>' +
+    '<td class="col-name">' + escapeHtml(rec.name) +
+      '<button class="hide-btn" onclick="event.stopPropagation();App.hideArtist(\'' + escapeHtml(rec.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">hide</button></td>' +
+    '<td class="col-genres"><div class="genre-dot-list">' + genres + '</div></td>' +
+    '<td class="col-similar">' + similarTo + '</td>' +
+    '<td class="col-score">' + rec.total.toFixed(1) +
+      '<div class="score-bar-bg"><div class="score-bar-fill" style="width:' + barWidth + 'px"></div></div>' +
+    '</td>' +
+  '</tr>';
+
+  if (isSelected) {
+    html += renderExpandedRow(rec, maxTotal);
+  }
+  return html;
+}
+
+function renderExpandedRow(rec, maxTotal) {
+  const entries = Object.entries(rec.matches || {})
+    .sort((a, b) => b[1] - a[1])
+    .filter(([, val]) => val > 0);
+
+  let rows = '';
+  for (const [seedName, contrib] of entries) {
+    const seed = App.seeds.find(s => s.name === seedName);
+    const raw = (rec.rawMatches || {})[seedName] || 0;
+    const weight = seed ? seed.weight : 0;
+    const barW = maxTotal > 0 ? Math.round((contrib / maxTotal) * 80) : 0;
+    rows += '<tr>' +
+      '<td>' + escapeHtml(seedName) + '</td>' +
+      '<td class="mono">' + (raw * 100).toFixed(0) + '%</td>' +
+      '<td class="mono">× ' + weight + '</td>' +
+      '<td class="total">' + contrib.toFixed(1) + '</td>' +
+      '<td><div class="breakdown-bar-bg"><div class="breakdown-bar-fill" style="width:' + barW + 'px"></div></div></td>' +
+    '</tr>';
+  }
+
+  return '<tr class="expanded-row"><td colspan="5">' +
+    '<div style="padding:8px 0">' +
+      '<div class="breakdown-reason">Similarity breakdown</div>' +
+      '<table class="breakdown-table">' +
+        '<thead><tr><th>Seed</th><th>Sim</th><th>Weight</th><th>Contrib</th><th></th></tr></thead>' +
+        '<tbody>' + rows + '</tbody>' +
+      '</table>' +
+    '</div>' +
+  '</td></tr>';
+}
+
+function renderResultsCards(visible) {
+  const maxTotal = visible.length > 0 ? visible[0].total : 1;
+  let cards = '';
+  for (let i = 0; i < visible.length; i++) {
+    const rec = visible[i];
+    const genres = (rec.genres || []).map(g =>
+      '<span class="genre-dot"><span class="genre-dot-color" style="background:' + genreColor(g) + '"></span>' + escapeHtml(g) + '</span>'
+    ).join('');
+    cards += '<div class="result-card">' +
+      '<div style="display:flex;justify-content:space-between;align-items:baseline">' +
+        '<span style="font-weight:500;font-size:16px">' + escapeHtml(rec.name) + '</span>' +
+        '<span style="font-family:' + swiss.mono + ';font-size:11px;color:' + swiss.muted + '">' + rec.total.toFixed(1) + '</span>' +
+      '</div>' +
+      '<div class="genre-dot-list" style="margin-top:4px">' + genres + '</div>' +
+    '</div>';
+  }
+  return '<div>' + cards + '</div>';
+}
 
 function renderEditingLayout() {
   const isMobile = window.innerWidth <= 768;
@@ -315,7 +459,31 @@ function renderMeta(k, v) {
   return '<div class="meta-row"><span>' + escapeHtml(k) + '</span><span>' + escapeHtml(v) + '</span></div>';
 }
 
-function renderGatheringPanel() { return ''; }
+function renderGatheringPanel() {
+  const pct = (App.progress.done / Math.max(1, App.progress.total)) * 100;
+  let log = '';
+  for (let i = 0; i < App.seeds.length; i++) {
+    const sd = App.seeds[i];
+    const entry = App.progress.log.find(x => x.seed === sd.name);
+    if (!entry && i > App.progress.done) continue;
+    const status = entry ? (entry.failed ? '<span class="log-status warn">⚠</span>' : '<span class="log-status">✓</span>') : '<span class="log-pending">→</span>';
+    log += '<div class="gathering-log-row">' +
+      status +
+      '<span>' + escapeHtml(sd.name) + '</span>' +
+      '<span>' + (entry ? (entry.count + ' similar') : 'fetching…') + '</span>' +
+      '<span>' + (entry ? ('+' + entry.novel + ' new') : '') + '</span>' +
+    '</div>';
+  }
+
+  return '<div class="gathering-panel">' +
+    '<div class="gathering-header">' +
+      '<div class="section-head"><div class="section-head-label">Gathering similar artists</div></div>' +
+      '<div class="gathering-counter">' + App.progress.done + '/' + App.progress.total + '</div>' +
+    '</div>' +
+    '<div class="progress-track"><div class="progress-fill" style="width:' + pct + '%"></div></div>' +
+    '<div class="gathering-log">' + log + '</div>' +
+  '</div>';
+}
 function renderHelpOverlay() { return ''; }
 
 // === Actions ===
@@ -360,6 +528,120 @@ App.updateSeedWeight = function(idx, weight) {
 App.resync = function() {
   if (App.lastfmUser) doSync(App.lastfmUser);
   else setPhase('empty');
+};
+
+App.go = async function() {
+  if (App.seeds.length === 0) return;
+  App.unexcludedArtists = new Set();
+  App.artistInfoCache = new Map();
+  App.progress = { done: 0, total: App.seeds.length, log: [] };
+  App.computeTime = null;
+  const startTime = Date.now();
+  setPhase('gathering');
+
+  const allSimilar = new Map();
+  const failed = [];
+
+  for (let i = 0; i < App.seeds.length; i++) {
+    const seed = App.seeds[i];
+    try {
+      const data = await fetchWithRetry(
+        './api/artist/similar?artist=' + encodeURIComponent(seed.name),
+        60,
+        (msg) => {
+          const log = App.progress.log.find(x => x.seed === seed.name);
+          if (log) log.retryMsg = msg;
+          renderApp();
+        }
+      );
+      const artists = data.data.artists || [];
+      let novel = 0;
+      for (const similar of artists) {
+        if (!allSimilar.has(similar.name)) {
+          allSimilar.set(similar.name, {
+            name: similar.name,
+            match: similar.match,
+            matches: {},
+            rawMatches: {},
+            total: 0,
+            genres: []
+          });
+          novel++;
+        }
+        const entry = allSimilar.get(similar.name);
+        const weightedMatch = parseFloat(similar.match) * Math.pow(seed.weight, 0.8);
+        entry.matches[seed.name] = weightedMatch;
+        entry.rawMatches[seed.name] = parseFloat(similar.match) || 0;
+        entry.total += weightedMatch;
+      }
+      App.progress.log.push({ seed: seed.name, count: artists.length, novel: novel, failed: false });
+    } catch (err) {
+      console.error('Error fetching', seed.name, err);
+      failed.push(seed.name);
+      App.progress.log.push({ seed: seed.name, count: 0, novel: 0, failed: true });
+    }
+    App.progress.done = i + 1;
+    renderApp();
+  }
+
+  App.computeTime = ((Date.now() - startTime) / 1000).toFixed(1);
+
+  App.results = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total).slice(0, DISPLAY_LIMIT);
+
+  populateArtistInfo();
+
+  setPhase('results');
+  saveState();
+};
+
+async function populateArtistInfo() {
+  const batchSize = 10;
+  for (let i = 0; i < App.results.length; i += batchSize) {
+    const batch = App.results.slice(i, i + batchSize);
+    await Promise.all(batch.map(async (rec) => {
+      const info = await fetchArtistInfo(rec.name, App.lastfmUser);
+      if (info && info.tags && info.tags.tag) {
+        rec.genres = info.tags.tag.slice(0, 5).map(t => t.name);
+      }
+    }));
+    if (App.phase === 'results') renderApp();
+  }
+}
+
+App.selectRow = function(name) {
+  App.selected = (App.selected === name) ? null : name;
+  renderApp();
+};
+
+App.setSortKey = function(key) {
+  App.sortKey = key;
+  renderApp();
+};
+
+App.setFilter = function(value) {
+  App.filter = value;
+  renderApp();
+};
+
+App.hideArtist = function(name) {
+  const hidden = getHiddenArtists();
+  const key = name.toLowerCase();
+  if (!hidden.includes(key)) {
+    hidden.push(key);
+    setHiddenArtists(hidden);
+  }
+  App.hidden = getHiddenArtists();
+  renderApp();
+};
+
+App.unhideArtist = function(name) {
+  const hidden = getHiddenArtists().filter(n => n !== name.toLowerCase());
+  setHiddenArtists(hidden);
+  App.hidden = getHiddenArtists();
+  if (App.autoHiddenArtists.map(a => a.toLowerCase()).includes(name.toLowerCase())) {
+    App.unexcludedArtists.add(name.toLowerCase());
+  }
+  renderApp();
 };
 
 async function doSync(username) {
@@ -426,6 +708,12 @@ function attachEventListeners() {
       App.updateSeedWeight(idx, inp.value);
     });
   });
+  const filterInput = document.getElementById('results-filter');
+  if (filterInput) {
+    filterInput.addEventListener('input', function() {
+      App.setFilter(filterInput.value);
+    });
+  }
 }
 
 // === Keyboard ===
