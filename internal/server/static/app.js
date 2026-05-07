@@ -196,14 +196,11 @@ function renderSyncingState() {
 
 // Placeholders for phases not yet implemented
 function renderControlsRow() {
-  const visibleCount = App.results.filter(r => !App.hidden.includes(r.name)).length;
-
   return '<div class="stat-row">' +
-    '<div style="grid-column:1 / span 5">' +
+    '<div style="grid-column:1 / span 7">' +
       '<h1 class="stat-h1">Recommendations</h1>' +
     '</div>' +
-    '<div style="grid-column:7 / span 2">' + renderStat('Favorites', App.seeds.length) + '</div>' +
-    '<div style="grid-column:9 / span 2">' + renderStat('Candidates', App.phase === 'results' ? visibleCount : '—') + '</div>' +
+    '<div style="grid-column:9 / span 2">' + renderStat('Favorites', App.seeds.length) + '</div>' +
     '<div style="grid-column:11 / span 2">' + renderStat('Hidden', App.hidden.length) + '</div>' +
   '</div>';
 }
@@ -443,11 +440,7 @@ function renderSidePanel() {
 
   return '<div>' +
     '<div class="section-head"><div class="section-head-label">02 · Meta</div></div>' +
-    '<div class="side-meta">' +
-      renderMeta('candidates', App.phase === 'results' ? App.results.length : '—') +
-      renderMeta('compute', App.phase === 'results' ? App.computeTime + 's' : '—') +
-      (App.failedSeeds.length > 0 ? renderMeta('failed lookups', App.failedSeeds.map(escapeHtml).join(', ')) : '') +
-    '</div>' +
+    (App.failedSeeds.length > 0 ? '<div class="side-meta">' + renderMeta('failed lookups', App.failedSeeds.map(escapeHtml).join(', ')) + '</div>' : '') +
     hiddenChips +
     genreChips +
   '</div>';
@@ -555,9 +548,7 @@ App.go = async function() {
   autoHideTop50();
   App.artistInfoCache = new Map();
   App.progress = { done: 0, total: App.seeds.length, log: [] };
-  App.computeTime = null;
   App.failedSeeds = [];
-  const startTime = Date.now();
   setPhase('gathering');
 
   const allSimilar = new Map();
@@ -601,8 +592,6 @@ App.go = async function() {
   }
 
   App.failedSeeds = failed;
-
-  App.computeTime = ((Date.now() - startTime) / 1000).toFixed(1);
 
   App.results = Array.from(allSimilar.values()).sort((a, b) => b.total - a.total);
 
