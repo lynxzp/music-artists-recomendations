@@ -132,6 +132,8 @@ function formatTags(tags, limit) {
 
 function setPhase(phase) {
   App.phase = phase;
+  if (phase === 'editing') App.mobileTab = 'seeds';
+  if (phase === 'results') App.mobileTab = 'results';
   renderApp();
 }
 
@@ -381,8 +383,9 @@ function renderEditingLayout() {
       '<div class="tab-pane ' + (App.mobileTab === 'results' ? 'is-active' : '') + '">' + renderResultsPanel() + '</div>' +
     '</div>';
   }
+  const leftPanel = App.phase === 'results' ? renderResultsPanel() : renderSeedsPanel();
   return '<div class="two-col">' +
-    '<div>' + renderSeedsPanel() + '</div>' +
+    '<div>' + leftPanel + '</div>' +
     '<div>' + renderSidePanel() + '</div>' +
   '</div>';
 }
