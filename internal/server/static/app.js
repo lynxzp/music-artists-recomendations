@@ -410,7 +410,7 @@ function renderSeedsPanel() {
 
 function getGenreCounts() {
   const counts = new Map();
-  for (const rec of App.results) {
+  for (const rec of getVisibleResults()) {
     if (!rec.genres) continue;
     for (const g of rec.genres) {
       counts.set(g, (counts.get(g) || 0) + 1);
