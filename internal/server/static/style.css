@@ -295,3 +295,20 @@ kbd {
   .seeds-header { grid-template-columns: 2.2rem 1fr 3.5rem 3.5rem; }
   .seed-row { grid-template-columns: 2.2rem 1fr 3.5rem 3.5rem; }
 }
+
+/* ── Mobile-specific tweaks beyond base media query ── */
+@media (max-width: 768px) {
+  .app-header-breadcrumb { font-size: 10px; }
+  .app-header-version { display: none; }
+  .stat-row { padding: 16px 0 12px; margin-bottom: 16px; }
+  .stat-block-value { font-size: 22px; }
+  .seeds-panel { border: none; }
+  .seeds-header { padding: 6px 8px; }
+  .seed-row { padding: 6px 8px; }
+  .gathering-panel { padding: 16px; }
+  .gathering-log-row { grid-template-columns: 1.5rem 1fr 1fr; gap: 6px; font-size: 11px; }
+  .result-card {
+    border: 1px solid var(--line); padding: 12px; margin-bottom: 8px;
+    background: var(--bg);
+  }
+}
