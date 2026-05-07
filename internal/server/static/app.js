@@ -197,8 +197,124 @@ function renderSyncingState() {
 }
 
 // Placeholders for phases not yet implemented
-function renderControlsRow() { return ''; }
-function renderEditingLayout() { return ''; }
+function renderControlsRow() {
+  const visibleCount = App.results.filter(r => !App.hidden.includes(r.name)).length;
+  const subtitle = {
+    editing: 'Tune weights, then run.',
+    gathering: 'Gathering similar artists…',
+    results: visibleCount + ' of 150 candidates · top of ' + (App.seeds.length * 300) + ' lookups'
+  }[App.phase] || '';
+
+  return '<div class="stat-row">' +
+    '<div style="grid-column:1 / span 5">' +
+      '<h1 class="stat-h1">Recommendations</h1>' +
+      '<div class="stat-subtitle">' + escapeHtml(subtitle) + '</div>' +
+    '</div>' +
+    '<div style="grid-column:7 / span 2">' + renderStat('Seeds', App.seeds.length) + '</div>' +
+    '<div style="grid-column:9 / span 2">' + renderStat('Candidates', App.phase === 'results' ? visibleCount : '—') + '</div>' +
+    '<div style="grid-column:11 / span 2">' + renderStat('Hidden', App.hidden.length) + '</div>' +
+  '</div>';
+}
+
+function renderStat(label, value) {
+  return '<div>' +
+    '<div class="stat-block-label">' + escapeHtml(label) + '</div>' +
+    '<div class="stat-block-value">' + (value !== undefined ? value : '—') + '</div>' +
+  '</div>';
+}
+
+function renderResultsPanel() { return ''; }
+
+function renderEditingLayout() {
+  const isMobile = window.innerWidth <= 768;
+  if (isMobile) {
+    return '<div class="tab-bar" role="tablist">' +
+      '<button role="tab" aria-selected="' + (App.mobileTab === 'seeds' ? 'true' : 'false') + '" onclick="App.setMobileTab(\'seeds\')">Seeds</button>' +
+      '<button role="tab" aria-selected="' + (App.mobileTab === 'results' ? 'true' : 'false') + '" onclick="App.setMobileTab(\'results\')">Results</button>' +
+    '</div>' +
+    '<div class="two-col">' +
+      '<div class="tab-pane ' + (App.mobileTab === 'seeds' ? 'is-active' : '') + '">' + renderSeedsPanel() + '</div>' +
+      '<div class="tab-pane ' + (App.mobileTab === 'results' ? 'is-active' : '') + '">' + renderResultsPanel() + '</div>' +
+    '</div>';
+  }
+  return '<div class="two-col">' +
+    '<div>' + renderSeedsPanel() + '</div>' +
+    '<div>' + renderSidePanel() + '</div>' +
+  '</div>';
+}
+
+App.setMobileTab = function(tab) {
+  App.mobileTab = tab;
+  renderApp();
+};
+
+function renderSeedsPanel() {
+  let rows = '';
+  if (App.seeds.length === 0) {
+    rows = '<div class="seeds-empty">No seeds yet — add some below.</div>';
+  } else {
+    rows = App.seeds.map((sd, i) =>
+      '<div class="seed-row">' +
+        '<div class="seed-idx">' + String(i + 1).padStart(2, '0') + '</div>' +
+        '<div class="seed-name">' + escapeHtml(sd.name) + '</div>' +
+        '<div class="seed-plays">' + (sd.plays ? sd.plays.toLocaleString() : '—') + '</div>' +
+        '<div class="seed-weight">' +
+          '<input type="number" data-seed-idx="' + i + '" value="' + sd.weight + '" min="0">' +
+          '<button class="seed-remove" onclick="App.removeSeed(' + i + ')">×</button>' +
+        '</div>' +
+      '</div>'
+    ).join('');
+  }
+
+  return '<div>' +
+    '<div class="section-head">' +
+      '<div class="section-head-label">01 · Seeds</div>' +
+      (App.lastfmUser ? '<div style="display:flex;gap:8px;align-items:center;font-size:11px;color:' + swiss.muted + '">' +
+        '<span style="font-family:' + swiss.mono + '">last.fm · @' + escapeHtml(App.lastfmUser) + '</span>' +
+        '<button class="btn btn-sm" onclick="App.resync()">Resync</button></div>' : '') +
+    '</div>' +
+    '<div class="seeds-panel">' +
+      '<div class="seeds-header">' +
+        '<div>#</div><div>Artist</div><div style="text-align:right">Plays</div><div style="text-align:right">Weight</div>' +
+      '</div>' +
+      '<div class="seeds-scroll">' + rows + '</div>' +
+    '</div>' +
+    '<div class="add-seed-form">' +
+      '<input type="text" id="add-seed-input" placeholder="Add artist…">' +
+      '<button class="btn" onclick="App.addSeedFromInput()">Add</button>' +
+    '</div>' +
+    '<div class="seeds-actions">' +
+      '<button class="btn btn-primary" onclick="App.go()" ' +
+        'style="flex:1" ' + (App.seeds.length === 0 ? 'disabled' : '') + '>▶ Find similar</button>' +
+    '</div>' +
+  '</div>';
+}
+
+function renderSidePanel() {
+  const hiddenChips = App.hidden.length === 0 ? '' :
+    '<div class="hidden-chips">' +
+      '<div class="hidden-chips-label">Hidden (' + App.hidden.length + ')</div>' +
+      '<div class="hidden-chip-list">' +
+        App.hidden.map(n => '<span class="hidden-chip" onclick="App.unhideArtist(\'' + escapeHtml(n).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">' + escapeHtml(n) + '</span>').join('') +
+      '</div>' +
+    '</div>';
+
+  return '<div>' +
+    '<div class="section-head"><div class="section-head-label">02 · Meta</div></div>' +
+    '<div class="side-meta">' +
+      renderMeta('last run', App.phase === 'results' ? 'just now' : '—') +
+      renderMeta('candidates', App.phase === 'results' ? App.results.length + ' (of ' + (App.seeds.length * 300) + ' raw)' : '—') +
+      renderMeta('seed pool', (App.seeds.length * 300) + ' lookups') +
+      renderMeta('compute', App.phase === 'results' ? App.computeTime + 's' : '—') +
+    '</div>' +
+    hiddenChips +
+  '</div>';
+}
+
+function renderMeta(k, v) {
+  return '<div class="meta-row"><span>' + escapeHtml(k) + '</span><span>' + escapeHtml(v) + '</span></div>';
+}
+
 function renderGatheringPanel() { return ''; }
 function renderHelpOverlay() { return ''; }
 
@@ -210,6 +326,40 @@ App.skipSync = function() {
   App.seeds = [];
   App.error = null;
   setPhase('editing');
+};
+
+App.addSeedFromInput = function() {
+  const input = document.getElementById('add-seed-input');
+  if (!input) return;
+  const name = input.value.trim();
+  if (!name) return;
+  const key = name.toLowerCase();
+  if (App.seeds.some(s => s.name.toLowerCase() === key)) {
+    input.value = ''; return; // duplicate
+  }
+  App.seeds.push({ name: name, plays: 0, weight: 100 });
+  input.value = '';
+  saveState();
+  renderApp();
+};
+
+App.removeSeed = function(idx) {
+  App.seeds.splice(idx, 1);
+  saveState();
+  renderApp();
+};
+
+App.updateSeedWeight = function(idx, weight) {
+  const w = parseInt(weight, 10) || 0;
+  if (App.seeds[idx]) {
+    App.seeds[idx].weight = w;
+    saveState();
+  }
+};
+
+App.resync = function() {
+  if (App.lastfmUser) doSync(App.lastfmUser);
+  else setPhase('empty');
 };
 
 async function doSync(username) {
@@ -264,6 +414,18 @@ function attachEventListeners() {
       if (user) doSync(user);
     });
   }
+  const addInput = document.getElementById('add-seed-input');
+  if (addInput) {
+    addInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); App.addSeedFromInput(); }
+    });
+  }
+  document.querySelectorAll('.seed-row input').forEach(function(inp) {
+    inp.addEventListener('change', function() {
+      const idx = parseInt(inp.dataset.seedIdx, 10);
+      App.updateSeedWeight(idx, inp.value);
+    });
+  });
 }
 
 // === Keyboard ===
