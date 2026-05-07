@@ -183,7 +183,10 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); fo
 .genre-chip {
   font-size: 11px; padding: 5px 9px; border: 1px solid var(--line);
   background: var(--bg); color: var(--muted); font-family: var(--font);
+  cursor: pointer;
 }
+.genre-chip:hover { border-color: var(--ink); color: var(--ink); }
+.genre-chip.active { background: var(--ink); color: var(--bg); border-color: var(--ink); }
 
 /* ── Gathering ── */
 .gathering-panel { border: 1px solid var(--ink); padding: 24px 28px; margin-bottom: 36px; }
@@ -217,7 +220,8 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); fo
 .col-name { font-weight: 500; font-size: 14px; }
 .col-genres { font-size: 11px; color: var(--muted); }
 .genre-dot-list { display: flex; flex-wrap: wrap; gap: 6px; }
-.genre-dot { display: flex; align-items: center; gap: 5px; }
+.genre-dot { display: flex; align-items: center; gap: 5px; cursor: pointer; padding: 2px 4px; border-radius: 3px; transition: background 150ms, color 150ms; }
+.genre-dot.active { background: var(--ink); color: var(--bg); }
 .genre-dot-color { width: 6px; height: 6px; border-radius: 50%; }
 .col-similar { font-size: 11px; color: var(--muted); }
 .col-plays { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 11px; width: 4rem; text-align: right; padding-right: 12px; }

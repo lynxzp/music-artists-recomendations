@@ -42,6 +42,7 @@ const App = {
   artistInfoCache: new Map(),
   lastRenderArgs: null,
   failedSeeds: [],
+  highlightedGenre: null,
 };
 
 // === API ===
@@ -257,7 +258,7 @@ function renderResultsTable(visible) {
 
 function renderRow(rec, rank, maxTotal) {
   const genres = (rec.genres || []).map(g =>
-    '<span class="genre-dot"><span class="genre-dot-color" style="background:' + genreColor(g) + '"></span>' + escapeHtml(g) + '</span>'
+    '<span class="genre-dot ' + (App.highlightedGenre === g ? 'active' : '') + '" onclick="event.stopPropagation();App.toggleGenreHighlight(\'' + escapeHtml(g).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')"><span class="genre-dot-color" style="background:' + genreColor(g) + '"></span>' + escapeHtml(g) + '</span>'
   ).join('');
 
   const topMatches = Object.entries(rec.matches || {})
@@ -325,7 +326,7 @@ function renderResultsCards(visible) {
   for (let i = 0; i < visible.length; i++) {
     const rec = visible[i];
     const genres = (rec.genres || []).map(g =>
-      '<span class="genre-dot"><span class="genre-dot-color" style="background:' + genreColor(g) + '"></span>' + escapeHtml(g) + '</span>'
+      '<span class="genre-dot ' + (App.highlightedGenre === g ? 'active' : '') + '" onclick="App.toggleGenreHighlight(\'' + escapeHtml(g).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')"><span class="genre-dot-color" style="background:' + genreColor(g) + '"></span>' + escapeHtml(g) + '</span>'
     ).join('');
     cards += '<div class="result-card">' +
       '<div style="display:flex;justify-content:space-between;align-items:baseline">' +
@@ -434,7 +435,7 @@ function renderSidePanel() {
     '<div class="genre-chips">' +
       '<div class="genre-chips-label">Genres (' + genreCounts.length + ')</div>' +
       '<div class="genre-chip-list">' +
-        genreCounts.map(g => '<span class="genre-chip">' + escapeHtml(g.name) + ' (' + g.count + ')</span>').join('') +
+        genreCounts.map(g => '<span class="genre-chip ' + (App.highlightedGenre === g.name ? 'active' : '') + '" onclick="App.toggleGenreHighlight(\'' + escapeHtml(g.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">' + escapeHtml(g.name) + ' (' + g.count + ')</span>').join('') +
       '</div>' +
     '</div>';
 
@@ -620,6 +621,11 @@ async function populateArtistInfo() {
     if (App.phase === 'results') renderApp();
   }
 }
+
+App.toggleGenreHighlight = function(name) {
+  App.highlightedGenre = (App.highlightedGenre === name) ? null : name;
+  renderApp();
+};
 
 App.selectRow = function(name) {
   App.selected = (App.selected === name) ? null : name;
