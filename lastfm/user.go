@@ -55,11 +55,6 @@ func (c *Client) UserGetTopArtists(ctx context.Context, user, period string, lim
 	}
 
 	if body == nil {
-		if c.limiter != nil {
-			if err := c.limiter.Wait(ctx); err != nil {
-				return nil, fmt.Errorf("rate limiter wait cancelled: %w", err)
-			}
-		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create request: %w", err)

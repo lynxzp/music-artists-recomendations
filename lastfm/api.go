@@ -18,7 +18,7 @@ type Client struct {
 	httpClient *http.Client
 }
 
-func newHTTPClient() *http.Client {
+func newHTTPClient(l *ratelimit.Limiter) *http.Client {
 	baseTransport := &http.Transport{
 		MaxIdleConns:        100,
 		MaxIdleConnsPerHost: 10,
@@ -28,20 +28,21 @@ func newHTTPClient() *http.Client {
 	return &http.Client{
 		Timeout: 30 * time.Second,
 		Transport: &retry.RetryTransport{
-			Base:   baseTransport,
-			Delays: retry.DefaultDelays,
+			Base:    baseTransport,
+			Delays:  retry.DefaultDelays,
+			Limiter: l,
 		},
 	}
 }
 
 func NewClient(apiKey string) *Client {
-	return &Client{apiKey: apiKey, baseURL: BaseURL, httpClient: newHTTPClient()}
+	return &Client{apiKey: apiKey, baseURL: BaseURL, httpClient: newHTTPClient(nil)}
 }
 
 func NewClientWithCache(apiKey string, c *cache.Cache) *Client {
-	return &Client{apiKey: apiKey, baseURL: BaseURL, cache: c, httpClient: newHTTPClient()}
+	return &Client{apiKey: apiKey, baseURL: BaseURL, cache: c, httpClient: newHTTPClient(nil)}
 }
 
 func NewClientWithCacheAndLimiter(apiKey string, c *cache.Cache, l *ratelimit.Limiter) *Client {
-	return &Client{apiKey: apiKey, baseURL: BaseURL, cache: c, limiter: l, httpClient: newHTTPClient()}
+	return &Client{apiKey: apiKey, baseURL: BaseURL, cache: c, limiter: l, httpClient: newHTTPClient(l)}
 }

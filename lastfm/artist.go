@@ -73,11 +73,6 @@ func (c *Client) ArtistGetSimilar(ctx context.Context, artist, mbid string, limi
 	}
 
 	if body == nil {
-		if c.limiter != nil {
-			if err := c.limiter.Wait(ctx); err != nil {
-				return nil, fmt.Errorf("rate limiter wait cancelled: %w", err)
-			}
-		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create request: %w", err)
@@ -152,11 +147,6 @@ func (c *Client) ArtistGetInfo(ctx context.Context, artist, mbid, username strin
 	}
 
 	if body == nil {
-		if c.limiter != nil {
-			if err := c.limiter.Wait(ctx); err != nil {
-				return nil, fmt.Errorf("rate limiter wait cancelled: %w", err)
-			}
-		}
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create request: %w", err)

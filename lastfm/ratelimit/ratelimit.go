@@ -21,24 +21,16 @@ func New(interval time.Duration) *Limiter {
 
 func (l *Limiter) Wait(ctx context.Context) error {
 	l.mu.Lock()
+	defer l.mu.Unlock()
+
 	sleepDuration := l.interval - time.Since(l.lastReq)
-	if sleepDuration < 0 {
-		sleepDuration = 0
+	if sleepDuration > 0 {
+		select {
+		case <-time.After(sleepDuration):
+		case <-ctx.Done():
+			return ctx.Err()
+		}
 	}
-	l.lastReq = time.Now().Add(sleepDuration)
-	l.mu.Unlock()
-
-	if sleepDuration <= 0 {
-		return nil
-	}
-
-	timer := time.NewTimer(sleepDuration)
-	defer timer.Stop()
-
-	select {
-	case <-timer.C:
-		return nil
-	case <-ctx.Done():
-		return ctx.Err()
-	}
+	l.lastReq = time.Now()
+	return nil
 }
