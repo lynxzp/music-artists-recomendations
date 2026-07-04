@@ -555,41 +555,54 @@ App.go = async function() {
   const allSimilar = new Map();
   const failed = [];
 
-  for (let i = 0; i < App.seeds.length; i++) {
-    const seed = App.seeds[i];
-    try {
-      const data = await fetchWithRetry(
-        './api/artist/similar?artist=' + encodeURIComponent(seed.name),
-        60
-      );
-      const artists = data.data.artists || [];
-      let novel = 0;
-      for (const similar of artists) {
-        if (!allSimilar.has(similar.name)) {
-          allSimilar.set(similar.name, {
-            name: similar.name,
-            match: similar.match,
-            matches: {},
-            rawMatches: {},
-            total: 0,
-            genres: []
-          });
-          novel++;
-        }
-        const entry = allSimilar.get(similar.name);
-        const weightedMatch = parseFloat(similar.match) * Math.pow(seed.weight, 0.8);
-        entry.matches[seed.name] = weightedMatch;
-        entry.rawMatches[seed.name] = parseFloat(similar.match) || 0;
-        entry.total += weightedMatch;
+  // Merge one seed's similar-artist list into the shared map. Runs synchronously
+  // (JS is single-threaded), so the concurrent fetches below never race it.
+  const mergeSeed = (seed, artists) => {
+    let novel = 0;
+    for (const similar of artists) {
+      if (!allSimilar.has(similar.name)) {
+        allSimilar.set(similar.name, {
+          name: similar.name,
+          match: similar.match,
+          matches: {},
+          rawMatches: {},
+          total: 0,
+          genres: []
+        });
+        novel++;
       }
-      App.progress.log.push({ seed: seed.name, count: artists.length, novel: novel, failed: false });
-    } catch (err) {
-      console.error('Error fetching', seed.name, err);
-      failed.push(seed.name);
-      App.progress.log.push({ seed: seed.name, count: 0, novel: 0, failed: true });
+      const entry = allSimilar.get(similar.name);
+      const weightedMatch = parseFloat(similar.match) * Math.pow(seed.weight, 0.8);
+      entry.matches[seed.name] = weightedMatch;
+      entry.rawMatches[seed.name] = parseFloat(similar.match) || 0;
+      entry.total += weightedMatch;
     }
-    App.progress.done = i + 1;
-    updateGatheringPanel();
+    return novel;
+  };
+
+  // Gather seeds concurrently in small batches. The proxy caps upstream Last.fm
+  // calls at RATE_LIMIT_RPS (5); keeping ~6 requests in flight saturates that
+  // instead of waiting one full round-trip at a time (which looked like ~1/s).
+  const CONCURRENCY = 6;
+  for (let i = 0; i < App.seeds.length; i += CONCURRENCY) {
+    const batch = App.seeds.slice(i, i + CONCURRENCY);
+    await Promise.all(batch.map(async (seed) => {
+      try {
+        const data = await fetchWithRetry(
+          './api/artist/similar?artist=' + encodeURIComponent(seed.name),
+          60
+        );
+        const artists = data.data.artists || [];
+        const novel = mergeSeed(seed, artists);
+        App.progress.log.push({ seed: seed.name, count: artists.length, novel: novel, failed: false });
+      } catch (err) {
+        console.error('Error fetching', seed.name, err);
+        failed.push(seed.name);
+        App.progress.log.push({ seed: seed.name, count: 0, novel: 0, failed: true });
+      }
+      App.progress.done++;
+      updateGatheringPanel();
+    }));
   }
 
   App.failedSeeds = failed;

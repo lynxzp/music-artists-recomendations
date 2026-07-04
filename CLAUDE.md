@@ -80,9 +80,12 @@ go test ./... --race
 Environment variables:
 
 ```bash
-export API_KEY=your_lastfm_api_key
-export CACHE_PATH=./cache.db  # optional, defaults to ./cache.db
+export LASTFM_PROXY_URL=http://lastfm-proxy:8080  # optional, this is the default
 ```
+
+All Last.fm access goes through the internal `lastfm-proxy` service, which holds
+the API key and owns caching, rate-limiting, retries, and negative caching. This
+service keeps no local cache and no API key.
 
 ## Architecture
 
@@ -90,19 +93,16 @@ export CACHE_PATH=./cache.db  # optional, defaults to ./cache.db
 - `internal/service/` - Service orchestration layer
   - `music-recomendations.go` - Initializes config, logging, and HTTP server; manages lifecycle
 - `internal/server/` - HTTP server implementation
-  - `server.go` - Server initialization, lifecycle, graceful shutdown, `MusicClient` interface
+  - `server.go` - Server initialization, lifecycle, graceful shutdown, `MusicClient` interface (`New` no longer returns an error and there is no cache to close)
   - `handlers.go` - HTTP request handlers
   - `routes.go` - Route registration
   - `validation.go` - Input validation (artist names, usernames, periods)
   - `static.go` - Embeds `static/` via `go:embed`; serves `/static/` file server
   - `static/` - Frontend assets: `index.html`, `app.js`, `style.css`
-- `lastfm/` - Last.fm API client package
-  - `api.go` - Client configuration and HTTP client setup
-  - `artist.go` - Artist.getSimilar and Artist.getInfo endpoints
-  - `user.go` - User.getTopArtists endpoint
-  - `cache/cache.go` - SQLite-based response cache (7-day TTL)
-  - `ratelimit/ratelimit.go` - Token bucket rate limiter (1 req/sec)
-  - `retry/retry.go` - HTTP transport with exponential backoff retry
+- `lastfm/` - Thin client for the lastfm-proxy service
+  - `api.go` - `Client` (proxy URL + `http.Client`) and the shared `query` helper (POST `/v1/query`)
+  - `artist.go` - Artist.getSimilar and Artist.getInfo (types + `AppendSimilarArtists`)
+  - `user.go` - User.getTopArtists
 
 ## HTTP Endpoints
 
@@ -126,7 +126,7 @@ Server listens on `0.0.0.0:8080` with graceful shutdown support (30s timeout).
 ### `internal/service`
 
 **Types:**
-- `Config` — `APIKey`, `SimilarArtistsLimit`, `TopArtistsLimit`, `CachePath`
+- `Config` — `ProxyURL`, `SimilarArtistsLimit`, `TopArtistsLimit`
 
 **Functions:**
 - `Run() error` — loads config from env, initializes logger, creates and starts HTTP server
@@ -134,15 +134,14 @@ Server listens on `0.0.0.0:8080` with graceful shutdown support (30s timeout).
 ### `internal/server`
 
 **Types:**
-- `Config` — `APIKey`, `SimilarArtistsLimit`, `TopArtistsLimit`, `CachePath`, `Logger`
+- `Config` — `ProxyURL`, `SimilarArtistsLimit`, `TopArtistsLimit`, `Logger`
 - `MusicClient` (interface) — `ArtistGetSimilar`, `ArtistGetInfo`, `UserGetTopArtists`; consumed by `Server`, satisfied by `*lastfm.Client`
-- `Server` (unexported) — `client MusicClient`, `cache`, `config`, `logger`, `httpServer`
+- `Server` (unexported) — `client MusicClient`, `config`, `logger`, `httpServer`
 - `appendRequest` (unexported) — `A []SimilarArtist`, `B []SimilarArtist`, `Weight float64`
 
 **Exported Functions:**
-- `New(cfg Config) (*Server, error)` — creates Server with cache and rate limiter
+- `New(cfg Config) *Server` — builds the proxy-backed client (defaults `ProxyURL` to `http://lastfm-proxy:8080`); no longer returns an error
 - `(*Server) Start() error` — starts HTTP server with signal-based graceful shutdown
-- `(*Server) Close() error` — closes the cache
 
 **Unexported Functions:**
 - `(*Server) registerRoutes(mux *http.ServeMux)` — registers all HTTP routes
@@ -158,65 +157,19 @@ Server listens on `0.0.0.0:8080` with graceful shutdown support (30s timeout).
 
 ### `lastfm`
 
-**Constants:**
-- `BaseURL = "https://ws.audioscrobbler.com/2.0/"`
-
 **Types:**
-- `Client` — `apiKey`, `baseURL`, `cache`, `limiter`, `httpClient`
-- `SimilarArtist` — `Name`, `MBID`, `Match`, `URL`
-- `ArtistTag` — `Name`, `URL`
-- `ArtistInfo` — `Name`, `MBID`, `URL`, `Stats` (UserPlaycount), `Tags`
-- `TopArtist` — `Name`, `MBID`, `Playcount`, `URL`
-- `similarArtistsResponse` (unexported)
-- `artistInfoResponse` (unexported)
-- `topArtistsResponse` (unexported)
+- `Client` — `proxyURL`, `httpClient`
+- `proxyRequest` (unexported) — `Method`, `Params` (JSON-tagged lowercase for the proxy wire format)
+- `SimilarArtist`, `ArtistTag`, `ArtistInfo`, `TopArtist` — response models (unchanged)
+- `similarArtistsResponse`, `artistInfoResponse`, `topArtistsResponse` (unexported)
 
 **Functions:**
-- `NewClient(apiKey string) *Client` — basic client without cache/limiter
-- `NewClientWithCache(apiKey string, c *cache.Cache) *Client` — client with cache
-- `NewClientWithCacheAndLimiter(apiKey string, c *cache.Cache, l *ratelimit.Limiter) *Client` — fully configured client
-- `(*Client) ArtistGetSimilar(ctx context.Context, artist, mbid string, limit int, autocorrect bool) ([]SimilarArtist, error)` — fetches similar artists
-- `(*Client) ArtistGetInfo(ctx context.Context, artist, mbid, username string, autocorrect bool) (*ArtistInfo, error)` — fetches artist info, tags, and user playcount stats (when username provided)
-- `(*Client) UserGetTopArtists(ctx context.Context, user, period string, limit, page int) ([]TopArtist, error)` — fetches user's top artists
-- `AppendSimilarArtists(a, b []SimilarArtist, weight float64) []SimilarArtist` — merges two slices, sums match values, applies weight to b
-
-### `lastfm/cache`
-
-**Constants:**
-- `maxAge = 7 * 24 * time.Hour`
-
-**Types:**
-- `Cache` — wraps `*sql.DB`
-- `Entry` — `Request`, `Response`, `Timestamp`
-
-**Functions:**
-- `New(dbPath string) (*Cache, error)` — opens/creates SQLite DB, initializes table, runs cleanup, migrates old schema
-- `(*Cache) Get(request string) (string, bool)` — returns cached response if not expired (uses per-entry TTL if set, otherwise falls back to `maxAge`)
-- `(*Cache) Set(request, response string)` — upserts cache entry with default TTL (0 → `maxAge`)
-- `(*Cache) SetWithTTL(request, response string, ttl time.Duration)` — upserts cache entry with a per-entry TTL
-- `(*Cache) Close() error` — closes DB connection
-- `(*Cache) cleanup()` (unexported) — deletes expired entries based on per-entry TTL or global `maxAge`
-
-### `lastfm/ratelimit`
-
-**Types:**
-- `Limiter` — `mu sync.Mutex`, `lastReq time.Time`, `interval time.Duration`
-
-**Functions:**
-- `New(interval time.Duration) *Limiter` — creates rate limiter
-- `(*Limiter) Wait(ctx context.Context) error` — blocks until interval elapsed since last request, returns ctx.Err() on cancellation
-
-### `lastfm/retry`
-
-**Types:**
-- `RetryTransport` — `Base http.RoundTripper`, `Delays []time.Duration`
-
-**Variables:**
-- `DefaultDelays` — exponential backoff: 1s, 2s, 4s, 8s, 16s, 32s, 64s, 128s, 256s, 512s, 1024s
-
-**Functions:**
-- `(*RetryTransport) RoundTrip(req *http.Request) (*http.Response, error)` — retries on 429/5xx with configured delays
-- `isRetryable(statusCode int) bool` (unexported) — returns true for 429 and 500-599
+- `NewClient(proxyURL string) *Client` — client posting to the lastfm-proxy at `proxyURL`
+- `(*Client) query(ctx, method, params) ([]byte, error)` (unexported) — POST `/v1/query`; 200/404 → body, else error
+- `(*Client) ArtistGetSimilar(...) ([]SimilarArtist, error)` — unchanged signature
+- `(*Client) ArtistGetInfo(...) (*ArtistInfo, error)` — unchanged signature
+- `(*Client) UserGetTopArtists(...) ([]TopArtist, error)` — unchanged signature
+- `AppendSimilarArtists(a, b []SimilarArtist, weight float64) []SimilarArtist` — unchanged
 
 ## Maintenance
 

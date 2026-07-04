@@ -17,20 +17,22 @@ func TestUserGetTopArtists_EmptyUser(t *testing.T) {
 
 func TestUserGetTopArtists_ValidResponse(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-		if q.Get("user") != "testuser" {
-			t.Errorf("user param = %q, want %q", q.Get("user"), "testuser")
+		method, params := decodeProxyReq(t, r)
+		if method != "user.gettopartists" {
+			t.Errorf("method = %q, want %q", method, "user.gettopartists")
 		}
-		if q.Get("period") != "7day" {
-			t.Errorf("period param = %q, want %q", q.Get("period"), "7day")
+		if params["user"] != "testuser" {
+			t.Errorf("user param = %q, want %q", params["user"], "testuser")
 		}
-		if q.Get("limit") != "5" {
-			t.Errorf("limit param = %q, want %q", q.Get("limit"), "5")
+		if params["period"] != "7day" {
+			t.Errorf("period param = %q, want %q", params["period"], "7day")
 		}
-		if q.Get("page") != "2" {
-			t.Errorf("page param = %q, want %q", q.Get("page"), "2")
+		if params["limit"] != "5" {
+			t.Errorf("limit param = %q, want %q", params["limit"], "5")
 		}
-
+		if params["page"] != "2" {
+			t.Errorf("page param = %q, want %q", params["page"], "2")
+		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"topartists":{"artist":[{"name":"Radiohead","mbid":"abc","playcount":"500","url":"http://example.com/1"},{"name":"Portishead","mbid":"def","playcount":"300","url":"http://example.com/2"}]}}`))
 	}))
@@ -52,16 +54,16 @@ func TestUserGetTopArtists_ValidResponse(t *testing.T) {
 	}
 }
 
-func TestUserGetTopArtists_Non200Status(t *testing.T) {
+func TestUserGetTopArtists_UpstreamError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusServiceUnavailable)
+		w.WriteHeader(http.StatusBadGateway)
 	}))
 	defer server.Close()
 
 	c := newTestClient(server.URL)
 	_, err := c.UserGetTopArtists(context.Background(), "testuser", "overall", 10, 1)
 	if err == nil {
-		t.Fatal("expected error for non-200 status")
+		t.Fatal("expected error for 502 status")
 	}
 }
 
@@ -80,15 +82,15 @@ func TestUserGetTopArtists_MalformedJSON(t *testing.T) {
 
 func TestUserGetTopArtists_OptionalParamsOmittedWhenZero(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		q := r.URL.Query()
-		if q.Get("period") != "" {
-			t.Errorf("period should be omitted for empty string, got %q", q.Get("period"))
+		_, params := decodeProxyReq(t, r)
+		if _, ok := params["period"]; ok {
+			t.Errorf("period should be omitted for empty string, got %q", params["period"])
 		}
-		if q.Get("limit") != "" {
-			t.Errorf("limit should be omitted for 0, got %q", q.Get("limit"))
+		if _, ok := params["limit"]; ok {
+			t.Errorf("limit should be omitted for 0, got %q", params["limit"])
 		}
-		if q.Get("page") != "" {
-			t.Errorf("page should be omitted for 0, got %q", q.Get("page"))
+		if _, ok := params["page"]; ok {
+			t.Errorf("page should be omitted for 0, got %q", params["page"])
 		}
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"topartists":{"artist":[]}}`))

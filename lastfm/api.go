@@ -1,48 +1,78 @@
 package lastfm
 
 import (
-	"music-recomendations/lastfm/cache"
-	"music-recomendations/lastfm/ratelimit"
-	"music-recomendations/lastfm/retry"
+	"bytes"
+	"context"
+	"encoding/json"
+	"fmt"
+	"io"
 	"net/http"
+	"strings"
 	"time"
 )
 
-const BaseURL = "https://ws.audioscrobbler.com/2.0/"
-
+// Client sends every Last.fm request through the lastfm-proxy service. The
+// proxy owns the API key, caching, rate-limiting, retries, negative caching,
+// and stale-if-error — so this client holds none of that.
 type Client struct {
-	apiKey     string
-	baseURL    string
-	cache      *cache.Cache
-	limiter    *ratelimit.Limiter
+	proxyURL   string
 	httpClient *http.Client
 }
 
-func newHTTPClient(l *ratelimit.Limiter) *http.Client {
-	baseTransport := &http.Transport{
-		MaxIdleConns:        100,
-		MaxIdleConnsPerHost: 10,
-		IdleConnTimeout:     90 * time.Second,
-	}
-
-	return &http.Client{
-		Timeout: 30 * time.Second,
-		Transport: &retry.RetryTransport{
-			Base:    baseTransport,
-			Delays:  retry.DefaultDelays,
-			Limiter: l,
-		},
+// NewClient returns a client that posts to proxyURL (e.g. http://lastfm-proxy:8080).
+// A trailing slash is trimmed so the endpoint join stays clean.
+func NewClient(proxyURL string) *Client {
+	return &Client{
+		proxyURL:   strings.TrimRight(proxyURL, "/"),
+		httpClient: &http.Client{Timeout: 15 * time.Second},
 	}
 }
 
-func NewClient(apiKey string) *Client {
-	return &Client{apiKey: apiKey, baseURL: BaseURL, httpClient: newHTTPClient(nil)}
+// proxyRequest is the wire format for POST /v1/query. The JSON tags keep the
+// keys lowercase to match the proxy's documented contract — do not rely on
+// encoding/json's case-insensitive matching.
+type proxyRequest struct {
+	Method string            `json:"method"`
+	Params map[string]string `json:"params"`
 }
 
-func NewClientWithCache(apiKey string, c *cache.Cache) *Client {
-	return &Client{apiKey: apiKey, baseURL: BaseURL, cache: c, httpClient: newHTTPClient(nil)}
-}
+// query sends one request to the proxy and returns the raw Last.fm response
+// body. A 200 or 404 returns the body (404 is the proxy's not-found /
+// negative-cache disposition; its Last.fm error-6 envelope unmarshals to an
+// empty result — so a genuine not-found yields empty data, not an error). Any
+// other status is an error; the proxy already retries and serves stale, so
+// there is nothing to retry here.
+func (c *Client) query(ctx context.Context, method string, params map[string]string) ([]byte, error) {
+	payload, err := json.Marshal(proxyRequest{Method: method, Params: params})
+	if err != nil {
+		return nil, fmt.Errorf("failed to marshal proxy request: %w", err)
+	}
 
-func NewClientWithCacheAndLimiter(apiKey string, c *cache.Cache, l *ratelimit.Limiter) *Client {
-	return &Client{apiKey: apiKey, baseURL: BaseURL, cache: c, limiter: l, httpClient: newHTTPClient(l)}
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.proxyURL+"/v1/query", bytes.NewReader(payload))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("proxy request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read proxy response: %w", err)
+	}
+
+	switch resp.StatusCode {
+	case http.StatusOK, http.StatusNotFound:
+		return body, nil
+	default:
+		snippet := body
+		if len(snippet) > 256 {
+			snippet = snippet[:256]
+		}
+		return nil, fmt.Errorf("proxy returned status %d: %s", resp.StatusCode, snippet)
+	}
 }

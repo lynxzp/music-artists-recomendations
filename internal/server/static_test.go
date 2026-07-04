@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 func testLogger(t *testing.T) *slog.Logger {
@@ -31,8 +30,7 @@ func TestHandleIndex_ServesHTML(t *testing.T) {
 }
 
 func TestStaticFiles_ServeCSS(t *testing.T) {
-	s, err := New(Config{APIKey: "test", Logger: testLogger(t)})
-	require.NoError(t, err)
+	s := New(Config{Logger: testLogger(t)})
 
 	mux := http.NewServeMux()
 	s.registerRoutes(mux)

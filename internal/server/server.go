@@ -2,11 +2,8 @@ package server
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"music-recomendations/lastfm"
-	"music-recomendations/lastfm/cache"
-	"music-recomendations/lastfm/ratelimit"
 	"net/http"
 	"os"
 	"os/signal"
@@ -14,11 +11,12 @@ import (
 	"time"
 )
 
+const defaultProxyURL = "http://lastfm-proxy:8080"
+
 type Config struct {
-	APIKey              string
+	ProxyURL            string
 	SimilarArtistsLimit int
 	TopArtistsLimit     int
-	CachePath           string
 	Logger              *slog.Logger
 }
 
@@ -30,36 +28,27 @@ type MusicClient interface {
 
 type Server struct {
 	client     MusicClient
-	cache      *cache.Cache
 	config     Config
 	logger     *slog.Logger
 	httpServer *http.Server
 }
 
-func New(cfg Config) (*Server, error) {
+func New(cfg Config) *Server {
 	logger := cfg.Logger
 	if logger == nil {
 		logger = slog.New(slog.NewJSONHandler(os.Stderr, nil))
 	}
 
-	cachePath := cfg.CachePath
-	if cachePath == "" {
-		cachePath = "./cache.db"
+	proxyURL := cfg.ProxyURL
+	if proxyURL == "" {
+		proxyURL = defaultProxyURL
 	}
-	apiCache, err := cache.New(cachePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize cache: %w", err)
-	}
-
-	limiter := ratelimit.New(time.Second)
-	client := lastfm.NewClientWithCacheAndLimiter(cfg.APIKey, apiCache, limiter)
 
 	return &Server{
-		client: client,
-		cache:  apiCache,
+		client: lastfm.NewClient(proxyURL),
 		config: cfg,
 		logger: logger,
-	}, nil
+	}
 }
 
 func (s *Server) Start() error {
@@ -110,12 +99,5 @@ func (s *Server) Start() error {
 	}
 
 	s.logger.Info("server stopped")
-	return nil
-}
-
-func (s *Server) Close() error {
-	if s.cache != nil {
-		return s.cache.Close()
-	}
 	return nil
 }

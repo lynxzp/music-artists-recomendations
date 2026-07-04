@@ -7,10 +7,9 @@ import (
 )
 
 type Config struct {
-	APIKey              string
+	ProxyURL            string
 	SimilarArtistsLimit int
 	TopArtistsLimit     int
-	CachePath           string
 }
 
 func Run() error {
@@ -20,26 +19,15 @@ func Run() error {
 	c := Config{
 		SimilarArtistsLimit: 500,
 		TopArtistsLimit:     500,
-		CachePath:           os.Getenv("CACHE_PATH"),
-		APIKey:              os.Getenv("API_KEY"),
+		ProxyURL:            os.Getenv("LASTFM_PROXY_URL"),
 	}
 
-	srv, err := server.New(server.Config{
-		APIKey:              c.APIKey,
+	srv := server.New(server.Config{
+		ProxyURL:            c.ProxyURL,
 		SimilarArtistsLimit: c.SimilarArtistsLimit,
 		TopArtistsLimit:     c.TopArtistsLimit,
-		CachePath:           c.CachePath,
 		Logger:              logger,
 	})
-	if err != nil {
-		logger.Error("failed to create server", "error", err)
-		return err
-	}
-	defer func() {
-		if err := srv.Close(); err != nil {
-			logger.Error("failed to close server", "error", err)
-		}
-	}()
 
 	return srv.Start()
 }

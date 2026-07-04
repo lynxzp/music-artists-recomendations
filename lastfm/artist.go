@@ -4,9 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
-	"net/http"
-	"net/url"
+	"strconv"
 )
 
 type SimilarArtist struct {
@@ -44,68 +42,29 @@ func (c *Client) ArtistGetSimilar(ctx context.Context, artist, mbid string, limi
 		return nil, fmt.Errorf("either Artist or MBID must be provided")
 	}
 
-	q := url.Values{}
-	q.Set("method", "artist.getsimilar")
-	q.Set("api_key", c.apiKey)
-	q.Set("format", "json")
-
+	params := map[string]string{}
 	if artist != "" {
-		q.Set("artist", artist)
+		params["artist"] = artist
 	}
 	if mbid != "" {
-		q.Set("mbid", mbid)
+		params["mbid"] = mbid
 	}
 	if limit > 0 {
-		q.Set("limit", fmt.Sprintf("%d", limit))
+		params["limit"] = strconv.Itoa(limit)
 	}
 	if autocorrect {
-		q.Set("autocorrect", "1")
+		params["autocorrect"] = "1"
 	}
 
-	requestURL := c.baseURL + "?" + q.Encode()
-
-	var body []byte
-
-	if c.cache != nil {
-		if cached, ok := c.cache.Get(requestURL); ok {
-			body = []byte(cached)
-		}
-	}
-
-	if body == nil {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create request: %w", err)
-		}
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("request failed: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-		}
-
-		body, err = io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read response: %w", err)
-		}
-
-		if c.cache != nil && len(body) > 0 {
-			c.cache.Set(requestURL, string(body))
-		}
-	}
-
-	if len(body) == 0 {
-		return nil, fmt.Errorf("empty response from API")
+	body, err := c.query(ctx, "artist.getsimilar", params)
+	if err != nil {
+		return nil, err
 	}
 
 	var result similarArtistsResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
-
 	return result.SimilarArtists.Artist, nil
 }
 
@@ -118,68 +77,29 @@ func (c *Client) ArtistGetInfo(ctx context.Context, artist, mbid, username strin
 		return nil, fmt.Errorf("either Artist or MBID must be provided")
 	}
 
-	q := url.Values{}
-	q.Set("method", "artist.getinfo")
-	q.Set("api_key", c.apiKey)
-	q.Set("format", "json")
-
+	params := map[string]string{}
 	if artist != "" {
-		q.Set("artist", artist)
+		params["artist"] = artist
 	}
 	if mbid != "" {
-		q.Set("mbid", mbid)
+		params["mbid"] = mbid
 	}
 	if username != "" {
-		q.Set("username", username)
+		params["username"] = username
 	}
 	if autocorrect {
-		q.Set("autocorrect", "1")
+		params["autocorrect"] = "1"
 	}
 
-	requestURL := c.baseURL + "?" + q.Encode()
-
-	var body []byte
-
-	if c.cache != nil {
-		if cached, ok := c.cache.Get(requestURL); ok {
-			body = []byte(cached)
-		}
-	}
-
-	if body == nil {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, requestURL, nil)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create request: %w", err)
-		}
-		resp, err := c.httpClient.Do(req)
-		if err != nil {
-			return nil, fmt.Errorf("request failed: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			return nil, fmt.Errorf("unexpected status code: %d", resp.StatusCode)
-		}
-
-		body, err = io.ReadAll(resp.Body)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read response: %w", err)
-		}
-
-		if c.cache != nil && len(body) > 0 {
-			c.cache.Set(requestURL, string(body))
-		}
-	}
-
-	if len(body) == 0 {
-		return nil, fmt.Errorf("empty response from API")
+	body, err := c.query(ctx, "artist.getinfo", params)
+	if err != nil {
+		return nil, err
 	}
 
 	var result artistInfoResponse
 	if err := json.Unmarshal(body, &result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
-
 	return &result.Artist, nil
 }
 
