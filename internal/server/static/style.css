@@ -225,9 +225,11 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); fo
 .genre-dot-color { width: 6px; height: 6px; border-radius: 50%; }
 .col-similar { font-size: 11px; color: var(--muted); }
 .col-plays { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 11px; width: 4rem; text-align: right; padding-right: 12px; }
-.col-score { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 11px; width: 4rem; text-align: right; }
-.score-bar-bg { width: 40px; height: 3px; background: var(--hairline); margin-top: 4px; }
-.score-bar-fill { height: 100%; background: var(--ink); }
+.col-score { font-variant-numeric: tabular-nums; font-family: var(--mono); font-size: 11px; width: 7rem; text-align: right; }
+.results-table th.col-score { text-align: right; }
+/* Score bar: normalized so the top result fills the full width, right-anchored
+   under the (right-aligned) number, and longer than the number itself. */
+.score-bar { height: 3px; background: var(--ink); margin: 4px 0 0 auto; }
 
 .hide-btn {
   padding: 1px 5px; font-size: 10px; background: var(--bg);

@@ -268,7 +268,7 @@ function renderRow(rec, rank, maxTotal) {
     .map(([name]) => escapeHtml(name));
 
   const similarTo = topMatches.length > 0 ? topMatches.join(', ') : '';
-  const barWidth = maxTotal > 0 ? Math.round((rec.total / maxTotal) * 40) : 0;
+  const barPct = maxTotal > 0 ? Math.max(3, Math.round((rec.total / maxTotal) * 100)) : 0;
   const isSelected = App.selected === rec.name;
 
   let html = '<tr data-artist="' + escapeHtml(rec.name) + '" class="' + (isSelected ? 'selected' : '') + '" onclick="App.selectRow(\'' + escapeHtml(rec.name).replace(/\\/g, '\\\\').replace(/'/g, "\\'") + '\')">' +
@@ -279,7 +279,7 @@ function renderRow(rec, rank, maxTotal) {
     '<td class="col-genres"><div class="genre-dot-list">' + genres + '</div></td>' +
     '<td class="col-similar">' + similarTo + '</td>' +
     '<td class="col-score">' + rec.total.toFixed(1) +
-      '<div class="score-bar-bg"><div class="score-bar-fill" style="width:' + barWidth + 'px"></div></div>' +
+      '<div class="score-bar" style="width:' + barPct + '%"></div>' +
     '</td>' +
   '</tr>';
 
