@@ -85,7 +85,7 @@ func TestHandleArtistGetSimilar_Valid(t *testing.T) {
 
 func TestHandleArtistGetSimilar_InvalidArtist(t *testing.T) {
 	s := newTestServer(nil)
-	req := httptest.NewRequest("GET", "/api/artist/similar?artist=bad%3Bname", nil)
+	req := httptest.NewRequest("GET", "/api/artist/similar?artist=bad%0Aname", nil)
 	w := httptest.NewRecorder()
 
 	s.handleArtistGetSimilar(w, req)
@@ -171,7 +171,7 @@ func TestHandleArtistGetInfo_Valid(t *testing.T) {
 
 func TestHandleArtistGetInfo_InvalidArtist(t *testing.T) {
 	s := newTestServer(nil)
-	req := httptest.NewRequest("GET", "/api/artist/info?artist=bad%3Cscript%3E", nil)
+	req := httptest.NewRequest("GET", "/api/artist/info?artist=bad%0Aname", nil)
 	w := httptest.NewRecorder()
 
 	s.handleArtistGetInfo(w, req)
@@ -339,7 +339,7 @@ func TestHandleUserGetTopArtists_Valid(t *testing.T) {
 
 func TestHandleUserGetTopArtists_InvalidUser(t *testing.T) {
 	s := newTestServer(nil)
-	req := httptest.NewRequest("GET", "/api/user/top-artists?user=bad%3Bname&period=7day", nil)
+	req := httptest.NewRequest("GET", "/api/user/top-artists?user=bad%0Aname&period=7day", nil)
 	w := httptest.NewRecorder()
 
 	s.handleUserGetTopArtists(w, req)

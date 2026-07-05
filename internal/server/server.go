@@ -45,7 +45,7 @@ func New(cfg Config) *Server {
 	}
 
 	return &Server{
-		client: lastfm.NewClient(proxyURL),
+		client: lastfm.NewClient(proxyURL, logger),
 		config: cfg,
 		logger: logger,
 	}

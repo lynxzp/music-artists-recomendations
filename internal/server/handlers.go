@@ -24,6 +24,7 @@ func (s *Server) handleArtistGetSimilar(w http.ResponseWriter, r *http.Request) 
 	artist := r.URL.Query().Get("artist")
 
 	if !isValidArtistName(artist) {
+		s.logger.Warn("rejected invalid artist parameter", "artist", artist)
 		http.Error(w, "invalid artist parameter", http.StatusBadRequest)
 		return
 	}
@@ -52,10 +53,12 @@ func (s *Server) handleArtistGetInfo(w http.ResponseWriter, r *http.Request) {
 	user := r.URL.Query().Get("user")
 
 	if !isValidArtistName(artist) {
+		s.logger.Warn("rejected invalid artist parameter", "artist", artist)
 		http.Error(w, "invalid artist parameter", http.StatusBadRequest)
 		return
 	}
 	if user != "" && !isValidUsername(user) {
+		s.logger.Warn("rejected invalid user parameter", "user", user)
 		http.Error(w, "invalid user parameter", http.StatusBadRequest)
 		return
 	}
@@ -93,6 +96,7 @@ type appendRequest struct {
 func (s *Server) handleAppendSimilarArtists(w http.ResponseWriter, r *http.Request) {
 	var req appendRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		s.logger.Warn("rejected invalid append request body", "error", err)
 		http.Error(w, "invalid JSON body", http.StatusBadRequest)
 		return
 	}
@@ -116,10 +120,12 @@ func (s *Server) handleUserGetTopArtists(w http.ResponseWriter, r *http.Request)
 	period := r.URL.Query().Get("period")
 
 	if !isValidUsername(user) {
+		s.logger.Warn("rejected invalid user parameter", "user", user)
 		http.Error(w, "invalid user parameter", http.StatusBadRequest)
 		return
 	}
 	if !isValidPeriod(period) {
+		s.logger.Warn("rejected invalid period parameter", "user", user, "period", period)
 		http.Error(w, "invalid period parameter", http.StatusBadRequest)
 		return
 	}

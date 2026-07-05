@@ -158,14 +158,14 @@ Server listens on `0.0.0.0:8080` with graceful shutdown support (30s timeout).
 ### `lastfm`
 
 **Types:**
-- `Client` — `proxyURL`, `httpClient`
+- `Client` — `proxyURL`, `httpClient`, `logger`
 - `proxyRequest` (unexported) — `Method`, `Params` (JSON-tagged lowercase for the proxy wire format)
 - `SimilarArtist`, `ArtistTag`, `ArtistInfo`, `TopArtist` — response models (unchanged)
 - `similarArtistsResponse`, `artistInfoResponse`, `topArtistsResponse` (unexported)
 
 **Functions:**
-- `NewClient(proxyURL string) *Client` — client posting to the lastfm-proxy at `proxyURL`
-- `(*Client) query(ctx, method, params) ([]byte, error)` (unexported) — POST `/v1/query`; 200/404 → body, else error
+- `NewClient(proxyURL string, logger *slog.Logger) *Client` — client posting to the lastfm-proxy at `proxyURL`; a nil logger falls back to `slog.Default()`
+- `(*Client) query(ctx, method, params) ([]byte, error)` (unexported) — POST `/v1/query`; 200 → body, 404 → body + `Warn("lastfm lookup not found")`, else error
 - `(*Client) ArtistGetSimilar(...) ([]SimilarArtist, error)` — unchanged signature
 - `(*Client) ArtistGetInfo(...) (*ArtistInfo, error)` — unchanged signature
 - `(*Client) UserGetTopArtists(...) ([]TopArtist, error)` — unchanged signature

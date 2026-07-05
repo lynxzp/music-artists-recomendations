@@ -11,10 +11,7 @@ import (
 )
 
 func newTestClient(url string) *Client {
-	return &Client{
-		proxyURL:   strings.TrimRight(url, "/"),
-		httpClient: &http.Client{},
-	}
+	return NewClient(url, nil)
 }
 
 // decodeProxyReq reads a POST /v1/query body inside a test proxy handler and

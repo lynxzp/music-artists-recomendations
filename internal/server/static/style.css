@@ -154,6 +154,12 @@ html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink); fo
   padding: 6px 10px; border: 1px solid var(--line); outline: none;
 }
 .add-seed-form button { padding: 6px 14px; }
+.resync-username {
+  font-family: var(--mono); font-size: 11px;
+  padding: 3px 6px; border: 1px solid var(--line); outline: none;
+  width: 110px; color: var(--ink);
+}
+.resync-username:focus { border-color: var(--ink); }
 
 /* ── Side Panel ── */
 .side-meta { margin-top: 22px; font-family: var(--mono); font-size: 11px; color: var(--muted); line-height: 1.85; }

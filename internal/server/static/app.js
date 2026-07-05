@@ -51,12 +51,22 @@ async function fetchWithRetry(url, maxRetries, statusCallback) {
   const delay = 100;
   let lastError;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    let resp = null;
     try {
-      const resp = await fetch(url);
-      if (resp.ok) return await resp.json();
-      lastError = new Error('HTTP ' + resp.status);
+      resp = await fetch(url);
     } catch (err) {
-      lastError = err;
+      lastError = err; // network error — retryable
+    }
+    if (resp) {
+      if (resp.ok) return await resp.json();
+      // Client errors (4xx) are permanent — the same request will always fail,
+      // so fail fast instead of hammering the server 60× (e.g. a rejected
+      // artist name). Only 5xx / network errors are worth retrying (the proxy
+      // may be fetching or serving stale).
+      if (resp.status >= 400 && resp.status < 500) {
+        throw new Error('HTTP ' + resp.status);
+      }
+      lastError = new Error('HTTP ' + resp.status); // 5xx — retryable
     }
     if (attempt < maxRetries) {
       if (statusCallback) statusCallback('Retry ' + (attempt + 1) + '/' + maxRetries + '...');
@@ -154,6 +164,8 @@ function renderApp() {
     const el = document.querySelector(sel);
     if (el) scrollTops[sel] = el.scrollTop;
   }
+  const resyncEl = document.getElementById('resync-username');
+  const resyncVal = resyncEl ? resyncEl.value : null;
   let html = '';
   html += '<div class="app-shell">';
   if (App.phase === 'empty') html += renderEmptyState();
@@ -165,6 +177,8 @@ function renderApp() {
   html += '</div>';
   app.innerHTML = html;
   attachEventListeners();
+  const newResyncEl = document.getElementById('resync-username');
+  if (newResyncEl) newResyncEl.value = (resyncVal !== null ? resyncVal : App.lastfmUser);
   for (const sel of ['.gathering-log', '.seeds-scroll']) {
     const el = document.querySelector(sel);
     if (el && sel in scrollTops) el.scrollTop = scrollTops[sel];
@@ -174,7 +188,7 @@ function renderApp() {
 function renderEmptyState() {
   const error = App.error ? '<div class="inline-error">⚠ ' + escapeHtml(App.error) + '</div>' : '';
   return '<div class="empty-state">' +
-    '<h1 class="empty-h1">Recommendations</h1>' +
+    '<h1 class="empty-h1">Artist Recommendations</h1>' +
     '<p class="empty-hint">Enter a last.fm username to bootstrap your favorite artists list, or skip and add artists manually.</p>' +
     '<form class="empty-form" id="empty-form" onsubmit="return false">' +
       '<input type="text" id="empty-username" placeholder="last.fm username" autofocus>' +
@@ -199,7 +213,7 @@ function renderSyncingState() {
 function renderControlsRow() {
   return '<div class="stat-row">' +
     '<div style="grid-column:1 / span 7">' +
-      '<h1 class="stat-h1">Recommendations</h1>' +
+      '<h1 class="stat-h1">Artist Recommendations</h1>' +
     '</div>' +
     '<div style="grid-column:9 / span 2">' + renderStat('Favorites', App.seeds.length) + '</div>' +
     '<div style="grid-column:11 / span 2">' + renderStat('Hidden', App.hidden.length) + '</div>' +
@@ -388,7 +402,8 @@ function renderSeedsPanel() {
     '<div class="section-head">' +
       '<div class="section-head-label">01 · Favorites</div>' +
       (App.lastfmUser ? '<div style="display:flex;gap:8px;align-items:center;font-size:11px;color:' + swiss.muted + '">' +
-        '<span style="font-family:' + swiss.mono + '">last.fm · @' + escapeHtml(App.lastfmUser) + '</span>' +
+        '<span style="font-family:' + swiss.mono + '">last.fm · @</span>' +
+        '<input type="text" id="resync-username" class="resync-username" placeholder="username">' +
         '<button class="btn btn-sm" onclick="App.resync()">Resync</button></div>' : '') +
     '</div>' +
     '<div class="seeds-panel">' +
@@ -540,7 +555,9 @@ App.updateSeedWeight = function(idx, weight) {
 };
 
 App.resync = function() {
-  if (App.lastfmUser) doSync(App.lastfmUser);
+  const input = document.getElementById('resync-username');
+  const user = input ? input.value.trim() : App.lastfmUser;
+  if (user) doSync(user);
   else setPhase('empty');
 };
 
@@ -717,6 +734,12 @@ function attachEventListeners() {
       e.preventDefault();
       const user = document.getElementById('empty-username').value.trim();
       if (user) doSync(user);
+    });
+  }
+  const resyncInput = document.getElementById('resync-username');
+  if (resyncInput) {
+    resyncInput.addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') { e.preventDefault(); App.resync(); }
     });
   }
   const addInput = document.getElementById('add-seed-input');

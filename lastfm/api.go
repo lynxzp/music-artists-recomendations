@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"log/slog"
 	"net/http"
 	"strings"
 	"time"
@@ -17,14 +18,20 @@ import (
 type Client struct {
 	proxyURL   string
 	httpClient *http.Client
+	logger     *slog.Logger
 }
 
 // NewClient returns a client that posts to proxyURL (e.g. http://lastfm-proxy:8080).
-// A trailing slash is trimmed so the endpoint join stays clean.
-func NewClient(proxyURL string) *Client {
+// A trailing slash is trimmed so the endpoint join stays clean. A nil logger
+// falls back to slog.Default().
+func NewClient(proxyURL string, logger *slog.Logger) *Client {
+	if logger == nil {
+		logger = slog.Default()
+	}
 	return &Client{
 		proxyURL:   strings.TrimRight(proxyURL, "/"),
 		httpClient: &http.Client{Timeout: 15 * time.Second},
+		logger:     logger,
 	}
 }
 
@@ -66,7 +73,10 @@ func (c *Client) query(ctx context.Context, method string, params map[string]str
 	}
 
 	switch resp.StatusCode {
-	case http.StatusOK, http.StatusNotFound:
+	case http.StatusOK:
+		return body, nil
+	case http.StatusNotFound:
+		c.logger.Warn("lastfm lookup not found", "method", method, "params", params)
 		return body, nil
 	default:
 		snippet := body

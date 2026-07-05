@@ -27,11 +27,18 @@ func TestIsValidArtistName(t *testing.T) {
 		{"period and comma", "Dr. Dre, Jr.", true},
 		{"max length 256 runes", strings.Repeat("a", 256), true},
 		{"over max length", strings.Repeat("a", 257), false},
-		{"semicolon invalid", "artist;drop", false},
-		{"angle brackets invalid", "artist<script>", false},
+		{"colon allowed", "Re:Zound", true},
+		{"colon and periods allowed", "Sixx:A.M.", true},
+		{"dollar sign allowed", "Ke$ha", true},
+		{"plus allowed", "+/-", true},
 		{"double quote valid", "artist\"name", true},
-		{"dollar sign invalid", "artist$name", false},
-		{"newline invalid", "artist\nname", false},
+		// Punctuation/symbols are allowed: the value is only JSON-encoded for the
+		// proxy and structured-logged, and the UI escapes names on render — no
+		// SQL/HTML/shell injection surface.
+		{"semicolon allowed", "artist;drop", true},
+		{"angle brackets allowed", "artist<script>", true},
+		{"control chars still rejected: newline", "artist\nname", false},
+		{"control chars still rejected: tab", "artist\tname", false},
 		{"numbers valid", "Blink182", true},
 	}
 
@@ -55,8 +62,9 @@ func TestIsValidUsername(t *testing.T) {
 		{"normal username", "john_doe", true},
 		{"max length 64 runes", strings.Repeat("a", 64), true},
 		{"over max length", strings.Repeat("a", 65), false},
-		{"semicolon invalid", "user;name", false},
-		{"angle brackets invalid", "user<name>", false},
+		{"punctuation allowed", "user;name", true},
+		{"angle brackets allowed", "user<name>", true},
+		{"control chars still rejected: newline", "user\nname", false},
 	}
 
 	for _, tt := range tests {
