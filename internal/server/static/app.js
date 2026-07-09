@@ -46,11 +46,29 @@ const App = {
 };
 
 // === API ===
+// Client-side limiter: stays under Traefik's ratelimit (average=50/s) so a
+// warm-cache run can never trigger a 429 storm. Every attempt (first try and
+// each retry) takes a token first.
+const RATE = 40;   // tokens per second
+const BUCKET = 40; // max stored tokens
+let tokens = BUCKET;
+let lastRefill = Date.now();
+
+async function takeToken() {
+  for (;;) {
+    const now = Date.now();
+    tokens = Math.min(BUCKET, tokens + ((now - lastRefill) / 1000) * RATE);
+    lastRefill = now;
+    if (tokens >= 1) { tokens -= 1; return; }
+    await new Promise(r => setTimeout(r, ((1 - tokens) / RATE) * 1000));
+  }
+}
+
 async function fetchWithRetry(url, maxRetries, statusCallback) {
-  maxRetries = maxRetries || 60;
-  const delay = 100;
+  maxRetries = maxRetries || 12;
   let lastError;
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    await takeToken();
     let resp = null;
     try {
       resp = await fetch(url);
@@ -59,16 +77,13 @@ async function fetchWithRetry(url, maxRetries, statusCallback) {
     }
     if (resp) {
       if (resp.ok) return await resp.json();
-      // Client errors (4xx) are permanent — the same request will always fail,
-      // so fail fast instead of hammering the server 60× (e.g. a rejected
-      // artist name). Only 5xx / network errors are worth retrying (the proxy
-      // may be fetching or serving stale).
-      if (resp.status >= 400 && resp.status < 500) {
-        throw new Error('HTTP ' + resp.status);
-      }
-      lastError = new Error('HTTP ' + resp.status); // 5xx — retryable
+      // Every failed status is retryable — including Traefik's 429 and the
+      // proxy's 5xx (it may be fetching or about to serve stale). The backoff
+      // below keeps retries from hammering the server.
+      lastError = new Error('HTTP ' + resp.status);
     }
     if (attempt < maxRetries) {
+      const delay = Math.min(500 * Math.pow(2, attempt), 8000);
       if (statusCallback) statusCallback('Retry ' + (attempt + 1) + '/' + maxRetries + '...');
       await new Promise(r => setTimeout(r, delay));
     }
@@ -606,8 +621,7 @@ App.go = async function() {
     await Promise.all(batch.map(async (seed) => {
       try {
         const data = await fetchWithRetry(
-          './api/artist/similar?artist=' + encodeURIComponent(seed.name),
-          60
+          './api/artist/similar?artist=' + encodeURIComponent(seed.name)
         );
         const artists = data.data.artists || [];
         const novel = mergeSeed(seed, artists);
