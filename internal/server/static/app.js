@@ -166,7 +166,9 @@ function formatTags(tags, limit) {
 function setPhase(phase) {
   App.phase = phase;
   if (phase === 'editing') App.mobileTab = 'seeds';
-  if (phase === 'results') App.mobileTab = 'results';
+  // Gathering renders into the results tab pane, so switch to it — otherwise
+  // on mobile the progress panel stays hidden and the button looks dead.
+  if (phase === 'gathering' || phase === 'results') App.mobileTab = 'results';
   renderApp();
 }
 
